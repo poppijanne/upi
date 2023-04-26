@@ -1,0 +1,110 @@
+<template id="login-dialog-template">
+    <div class="modal" tabindex="-1" role="dialog" :style="{display: display}">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-sign-in-alt"></i> Sisään kirjautuminen
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close" v-on:click="close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Käyttäjätunnus</label>
+                        <input type="text" id="player-name" v-model="playerName" class="form-control" ref="label">
+                        <label>Salasana</label>
+                        <input type="password" id="player-password" v-model="password" class="form-control"
+                            ref="password" placeholder="Salasanasi">
+                    </div>
+                </div>
+                <div class="modal-footer upi-dialog-buttons">
+                    <button type="button" class="btn btn-primary" v-on:click="login">Kirjaudu</button>
+                    <button type="button" class="btn btn-secondary" v-on:click="close">Peruuta</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+<script>
+    const loginDialog = new Vue({
+        el: '#login-dialog',
+        template: "#login-dialog-template",
+        data: {
+            playerName: "",
+            playerId: "",
+            password: "",
+            display: "none"
+        },
+        methods: {
+            open(playerId, callback) {
+                this.playerId = playerId;
+                this.display = "inline";
+                this.callback = callback;
+                this.player = playerCache.getWithId(playerId);
+
+                if (this.player.notFound === undefined) {
+                    this.playerName = this.player.label;
+                    this.$nextTick(() => this.$refs.password.focus())
+                }
+                else {
+                    this.$nextTick(() => this.$refs.label.focus())
+                }
+                
+            },
+            login() {
+
+                if ((this.playerId === undefined || this.playerId === "") && this.playerName === "") {
+                    alert("Syötä käyttäjätunnus");
+                    return;
+                }
+
+                fetch("/players").then(result => {
+                    return result.json();
+                }).then(players => {
+                    
+                    if (this.playerId === undefined) {
+                        for (let i = 0; i < players.length; i++) {
+                            let player = new Player(players[i].doc)
+                            if (player.label === this.playerName) {
+                                this.player = player;
+                                this.playerId = player.id;
+                                break;
+                            }
+                        }
+                    }
+                    console.log(this.playerId);
+                    let data = {
+                        playerId: this.playerId,
+                        password: this.password
+                    }
+                    this.playerId = undefined;
+                    this.$http.post('/login', data).then(
+                        response => {
+                            console.log(response);
+                            if (response.body.ok) {
+                                userStore.playerIdOfUser = response.body.playerId;
+                                userStore.organizationIdOfUser = response.body.organizationId;
+                                this.close();
+                                if (typeof this.callback !== "undefined") {
+                                    this.callback(this.player);
+                                    this.callback = undefined;
+                                }
+                            }
+                            else {
+                                alert(response.body.message);
+                            }
+                        },
+                        error => {
+                            console.error(error);
+                        }
+                    );
+                });
+            },
+            close() {
+                this.display = "none";
+            }
+        }
+    }).$mount('#app');
+</script>

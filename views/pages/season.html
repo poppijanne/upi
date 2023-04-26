@@ -1,0 +1,513 @@
+<style>
+    th.upi-season-round-header-cell {
+        padding: 0px;
+    }
+
+    th.upi-season-round-header-cell h4 {
+        display: flex;
+        justify-content: space-between;
+    }
+
+    td .games-table-game-points {
+        background-color: #89c16d;
+        color: #fdfcfc;
+        padding: 2px;
+        padding-left: 5px;
+        padding-right: 5px;
+        padding-top: 1px;
+        font-size: 0.7rem;
+        border-radius: 4px;
+        display: inline;
+        margin-left: 3px;
+        box-shadow: 0px 1px 1px #153a0bcc;
+    }
+
+    tr.demotion-limit td {
+        border-top: 3px double #f7b9b9;
+    }
+
+    tr.promotion-limit td {
+        border-bottom: 3px double #a8d2ab;
+    }
+</style>
+<template id="season-dashboard">
+    <div class="container-fluid">
+        <page-header icon="clipboard-list" :title="league.name + ' / ' + season.name"></page-header>
+
+        <div v-if="dangers.length" class="upi-messages">
+            <div v-for="message in dangers" class="alert alert-danger">
+                {{message}}
+            </div>
+        </div>
+
+        <div v-if="warnings.length" class="upi-messages">
+            <div v-for="message in warnings" class="alert alert-warning">
+                {{message}}
+            </div>
+        </div>
+
+        <div v-if="messages.length" class="upi-messages">
+            <div v-for="message in messages" class="alert alert-primary">
+                {{message}}
+            </div>
+        </div>
+
+        <div v-if="logs.length" class="upi-messages">
+            <div v-for="log in logs" class="alert alert-info">
+                {{log.date}}: {{log.text}}
+            </div>
+        </div>
+
+        <trophies-table :trophies="trophies" :players="players"></trophies-table>
+
+        <h2>Sarjatilanne</h2>
+        <div class="table-responsive">
+            <table class="table table-sm">
+                    
+                <thead class="thead-light">
+                    <tr>
+                        <th>Pelaaja</th>
+                        <th>Pisteet</th>
+                        <th>Pelatut</th>
+                        <th>Jäljellä</th>
+                        <th>Voitot</th>
+                        <th>Tappiot</th>
+                        <th>Tasapelit</th>
+                        <th>Jatkoajat</th>
+                        <th>Maalit</th>
+                        <th>Päästetyt</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <template v-for="division in season.divisions">
+                        <tr class="upi-table-divider-row">
+                            <th colspan="10">{{division.name}}</th>
+                        </tr>
+                        <tr v-for="(stats,index) in playerStatsInDivision(division)" :title="playerName(stats.playerId)"
+                            :class="[{'promotion-limit': division.isPromotionLimit(index+1)},{'demotion-limit': division.isDemotionLimit(index+1)}]">
+                            <td>
+                                <a v-on:click="viewPlayer(stats.playerId)" class="upi-clickable">{{playerLabel(stats.playerId)}}</a>
+                            </td>
+                            <td style="text-align: center">{{stats.score}}</td>
+                            <td style="text-align: center">{{stats.played}}</td>
+                            <td style="text-align: center">{{stats.unplayed}}</td>
+                            <td style="text-align: center">{{stats.wins}}</td>
+                            <td style="text-align: center">{{stats.losses}}</td>
+                            <td style="text-align: center">{{stats.ties}}</td>
+                            <td style="text-align: center">{{stats.overtimes}}</td>
+                            <td style="text-align: center">{{stats.goals}}</td>
+                            <td style="text-align: center">{{stats.opponentGoals}}</td>
+                        </tr>
+                    </template>
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td>
+                        </td>
+                        <td>
+                        </td>
+                        <td style="text-align: center">{{seasonStatistics.playedGames}}</td>
+                        <td style="text-align: center">{{seasonStatistics.unplayedGames}}</td>
+                        <td style="text-align: center">{{seasonStatistics.wins}}</td>
+                        <td></td>
+                        <td style="text-align: center">{{seasonStatistics.ties}}</td>
+                        <td style="text-align: center">{{seasonStatistics.overtimes}}</td>
+                        <td style="text-align: center">{{seasonStatistics.goals}}</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td colspan="10">
+                            <div class="progress">
+                                <div class="progress-bar" :class="[{'bg-success':seasonProgressInPercanteges === 100}]"
+                                    role="progressbar" :style="{width: seasonProgressInPercanteges+'%'}">{{seasonProgressInPercanteges}}
+                                    %</div>
+                            </div>
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        <br />
+        <h2>Pelit</h2>
+        <br />
+        <form>
+            <div class="form-group">
+                <select id="filter-player" v-model="filteredPlayerId" class="form-control">
+                    <option value="">Näytä kaikkien pelaajien pelit</option>
+                    <option :value="player.id" v-for="player in players" :key="player.id">
+                        {{player.label}}
+                    </option>
+                </select>
+            </div>
+        </form>
+        <div class="table-responsive">
+            <table class="table table-sm">
+                <tbody>
+                    <template v-for="(round,index) in season.rounds">
+                        <tr>
+                            <th colspan="9" class="upi-season-round-header-cell" @click="toggleRound(round)">
+                                <h4 class="upi-clickable">
+                                    <div>
+                                        <span v-if="round._toggled">
+                                            <i class="fas fa-chevron-circle-down"></i>
+                                        </span>
+                                        <span v-if="!round._toggled">
+                                            <i class="fas fa-chevron-circle-right"></i>
+                                        </span>
+                                        {{round.name}}
+                                    </div>
+                                    <div>{{round.deadline | formatDate}}</div>
+                                </h4>
+                            </th>
+                        </tr>
+
+                        <template v-if="round._toggled">
+                            <template v-if="playedGamesInRound(round).length">
+                                <tr class="upi-table-divider-row">
+                                    <th colspan="3">Pelatut pelit</th>
+                                    <th colspan="3" style="text-align: center">Tulos</th>
+                                    <th colspan="3"></th>
+                                </tr>
+                                <template v-for="game in playedGamesInRound(round)">
+                                    <tr v-if="filteredPlayerId === '' || game.hasPlayerId(filteredPlayerId)"
+                                        v-on:click.stop="viewGame(game)" class="upi-clickable">
+                                        <td class="upi-table-player-label-cell" :title="playerName(game.player1Id)">
+                                            <span>{{playerLabel(game.player1Id)}}</span>
+                                            <div v-if="!game.offScoreboard && game.getPlayerScore(game.player1Id) > 0" class="games-table-game-points hide-if-width-less-than-640">+{{game.getPlayerScore(game.player1Id)}}</div>
+                                        </td>
+                                        <td class="upi-table-vs-cell"> - </td>
+                                        <td class="upi-table-player-label-cell" :title="playerName(game.player2Id)">
+                                            <span>{{playerLabel(game.player2Id)}}</span>
+                                            <div v-if="!game.offScoreboard && game.getPlayerScore(game.player2Id) > 0" class="games-table-game-points hide-if-width-less-than-640">+{{game.getPlayerScore(game.player2Id)}}</div>
+                                        </td>
+                                        <td class="upi-table-game-goals-cell">{{game.player1Goals}}</td>
+                                        <td class="upi-table-vs-cell"> - </td>
+                                        <td class="upi-table-game-goals-cell">{{game.player2Goals}}</td>
+                                        <td>
+                                            <span v-if="game.overtime && game.player1Goals !== game.player2Goals">J</span>
+                                        </td>
+                                        <td>
+                                            <span v-if="game.comments">
+                                                <i class="fas fa-comment"></i>
+                                            </span>
+                                        </td>
+                                        <td class="upi-table-link-icon-cell">
+                                            <i class="fas fa-chevron-right"></i>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </template>
+
+                            <template v-if="unplayedGamesInRound(round).length">
+                                <tr class="upi-table-divider-row">
+                                    <th colspan="9">Pelaamattomat pelit</th>
+                                </tr>
+                                <template v-for="game in unplayedGamesInRound(round)">
+                                    <tr v-if="filteredPlayerId === '' || game.hasPlayerId(filteredPlayerId)"
+                                        v-on:click.stop="viewGame(game)" class="upi-clickable">
+                                        <td class="upi-table-player-label-cell" :title="playerName(game.player1Id)">
+                                            {{playerLabel(game.player1Id)}}
+                                        </td>
+                                        <td class="upi-table-vs-cell"> - </td>
+                                        <td class="upi-table-player-label-cell" :title="playerName(game.player2Id)">
+                                            {{playerLabel(game.player2Id)}}
+                                        </td>
+                                        <td colspan="3"></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td class="upi-table-link-icon-cell">
+                                            <i class="fas fa-chevron-right"></i>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </template>
+
+                        </template>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+        <div class="upi-buttons">
+            <button v-on:click="edit" class="btn btn-primary">
+                <i class="fas fa-edit"></i> Muokkaa kautta
+            </button>
+            <button v-on:click="goBack" class="btn btn-secondary">
+                <i class="fas fa-undo"></i> Palaa
+            </button>
+        </div>
+    </div>
+</template>
+<script>
+    const seasonDashboard = {
+        template: "#season-dashboard",
+        data() {
+            return {
+                league: new League(),
+                season: new Season(),
+                seasonStatistics: {},
+                seasonProgressInPercanteges: 0,
+                trophies: [],
+                players: [],
+                filteredPlayerId: "",
+                messages: [],
+                warnings: [],
+                dangers: [],
+                logs: []
+            }
+        },
+        created() {
+
+            this.organizationId = this.$route.params.organizationId;
+            this.playerStore = new PlayerStore(playerCache.players);
+            this.players = [...playerCache.players];
+            this.trophies = [...trophyCache.trophies];
+            this.gameStore = new GameStore(gameCache.games);
+            this.gameStoreForStatistics = new GameStore();
+            this.league = leagueCache.getWithId(this.$route.params.leagueId);
+            if (!this.league.notFound) {
+                this.season = this.league.getSeasonWithId(this.$route.params.seasonId);
+                let games = this.gameStore.getGamesOfSeason(this.season.id);
+                this.seasonStatistics = this.gameStore.getStatistics([]);
+                this.seasonProgressInPercanteges = 0;
+            }
+
+            leagueService.loadLeague(this.$route.params.leagueId).then(league => {
+
+                let season;
+
+                if (this.$route.params.seasonId !== undefined) {
+                    season = league.getSeasonWithId(this.$route.params.seasonId);
+                    season.divisions = season.divisions.sort((div1, div2) => div1.level < div2.level);
+                    season.rounds.forEach(round => {
+                        round._toggled = false;
+                    });
+                    /*
+                    logService.loadLogsOfSeason(season.id).then(logs => {
+                        this.logs = logs;
+                    }).catch(error => {
+                        messagesDialog.showError("Lataus epäonnistui", `Lokien haku epäonnistui.`, error);
+                        logger.logError(`Lokien haku epäonnistui.`, error);
+                    });*/
+
+                    gameService.loadGamesInSeason(season.id).then(games => {
+
+                        playerService.loadAllPlayersInOrganization(this.$route.params.organizationId).then(players => {
+                            players = players.filter(player => season.hasPlayerId(player.id));
+                            this.playerStore.addAll(players);
+
+                            games.forEach(game => {
+                                let player1 = this.playerStore.getWithId(game.player1Id);
+                                let player2 = this.playerStore.getWithId(game.player2Id);
+                                
+                                if (player1.label.localeCompare(player2.label) > 0) {
+                                    game.swapPlayersAndResults();
+                                }
+                            });
+
+                            this.gameStore.addAll(games);
+                            this.season = season;
+                            this.league = league;
+                            this.players = players;
+
+                            let gamesForStatistics = games.filter(game => season.getRoundWithId(game.roundId).showResults);
+                            this.gameStoreForStatistics.addAll(gamesForStatistics);
+
+                            this.seasonStatistics = this.gameStoreForStatistics.getStatistics(gamesForStatistics);
+                            this.seasonProgressInPercanteges = Math.floor((this.seasonStatistics.playedGames / this.seasonStatistics.games) * 100);
+
+                            this.createMessages();
+
+                            trophyService.loadTrophiesInSeason(season.id).then(trophies => {
+                                trophies = trophies.sort((trophy1, trophy2) => {
+                                    return trophy2.compare(trophy1);
+                                });
+                                this.trophies = trophies;
+                            }).catch(error => {
+                                messagesDialog.showError("Lataus epäonnistui", `Kauden palkintojen haku epäonnistui.`, error);
+                                logger.logError(`Kauden palkintojen haku epäonnistui.`, error);
+                            });
+
+                        }).catch(error => {
+                            messagesDialog.showError("Lataus epäonnistui", `Pelaajien tietojen haku epäonnistui.`, error);
+                            logger.logError(`Pelaajien tietojen haku epäonnistui.`, error);
+                        });
+
+                    }).catch(error => {
+                        messagesDialog.showError("Lataus epäonnistui", `Kauden pelien haku epäonnistui.`, error);
+                        logger.logError(`Kauden pelien haku epäonnistui.`, error);
+                    });
+
+                } else {
+                    this.season = new Season();
+                    this.league.addSeason(this.season);
+                    this.seasonStatistics = this.gameStore.getStatistics([]);
+
+                }
+
+            }).catch(error => {
+                messagesDialog.showError("Lataus epäonnistui", `Kauden tietojen haku epäonnistui.`, error);
+                logger.logError(`Kauden tietojen haku epäonnistui.`, error);
+            });
+        },
+        methods: {
+            playerStatsInDivision(division) {
+                return this.gameStoreForStatistics.getSeasonStatisticsForPlayers(this.season.id, division.playerIds);
+            },
+            playersInDivision(division) {
+                return division.playerIds.map(playerId => this.playerStore.getWithId(playerId));
+            },
+            playedGamesInRound(round) {
+                let games = this.gameStore.getGamesOfRound(round.id);
+                games = games.filter(game => game.isPlayed && !game.notFound);
+                games = games.sort((game1, game2) => {
+                    let player1 = this.playerStore.getWithId(game1.player1Id);
+                    let player2 = this.playerStore.getWithId(game2.player1Id);
+                    let label1 = player1 === undefined || player1.label === undefined ? "zzzzz" : player1.label;
+                    let label2 = player2 === undefined || player2.label === undefined ? "zzzzz" : player2.label;
+                    return label1.localeCompare(label2);
+                });
+                return games;
+            },
+            unplayedGamesInRound(round) {
+                let games = this.gameStore.getGamesOfRound(round.id);
+                games = games.filter(game => !game.isPlayed && !game.notFound);
+                games = games.sort((game1, game2) => {
+                    let player1 = this.playerStore.getWithId(game1.player1Id);
+                    let player2 = this.playerStore.getWithId(game2.player1Id);
+                    let label1 = player1 === undefined || player1.label === undefined ? "zzzzz" : player1.label;
+                    let label2 = player2 === undefined || player2.label === undefined ? "zzzzz" : player2.label;
+                    let result = label1.localeCompare(label2);
+                    if (result === 0) {
+                        player1 = this.playerStore.getWithId(game1.player2Id);
+                        player2 = this.playerStore.getWithId(game2.player2Id);
+                        label1 = player1 === undefined || player1.label === undefined ? "zzzzz" : player1.label;
+                        label2 = player2 === undefined || player2.label === undefined ? "zzzzz" : player2.label;
+                        result = label1.localeCompare(label2);
+                    }
+                    return result;
+                });
+                return games;
+            },
+            playerLabel(playerId) {
+                if (playerId === undefined) {
+                    return "?";
+                }
+                let player = this.playerStore.getWithId(playerId);
+                if (player !== undefined) {
+                    return player.label;
+                }
+                return "?";
+            },
+            playerName(playerId) {
+                return this.playerStore.getWithId(playerId).name;
+            },
+            addNewDivision() {
+                this.$router.push({
+                    name: "new-division",
+                    params: {
+                        organizationId: this.organizationId,
+                        leagueId: this.league.id,
+                        seasonId: this.season.id
+                    }
+                });
+            },
+            editDivision(division) {
+                this.$router.push({
+                    name: "edit-division",
+                    params: {
+                        organizationId: this.organizationId,
+                        leagueId: this.league.id,
+                        seasonId: this.season.id,
+                        divisionId: division.id
+                    }
+                });
+            },
+            editRound(round) {
+                this.$router.push({
+                    name: "edit-round",
+                    params: {
+                        organizationId: this.organizationId,
+                        leagueId: this.league.id,
+                        seasonId: this.season.id,
+                        roundId: round.id
+                    }
+                });
+            },
+            addNewRound() {
+                this.$router.push({
+                    name: "new-round",
+                    params: {
+                        organizationId: this.organizationId,
+                        leagueId: this.league.id,
+                        seasonId: this.season.id
+                    }
+                });
+            },
+            viewPlayer(playerId) {
+                if (playerId === undefined) {
+                    return;
+                }
+                this.$router.push({
+                    name: "view-player",
+                    params: {
+                        organizationId: this.organizationId,
+                        playerId: playerId
+                    }
+                });
+            },
+            toggleRound(round) {
+                round._toggled = !round._toggled;
+                //this.roundTogglers[index] = false;//!this.roundTogglers[index];
+            },
+            viewGame(game) {
+                /*
+                if (!game.bothPlayersAreSet()) {
+                    return;
+                }*/
+                this.$router.push({
+                    name: "game",
+                    params: {
+                        organizationId: this.organizationId,
+                        gameId: game.id
+                    }
+                });
+            },
+            createMessages() {
+                this.season.rounds.forEach(round => {
+                    let unplayedGamesInRound = this.gameStore.getUnplayedGamesOfRound(round.id);
+                    if (unplayedGamesInRound.length > 0) {
+                        let daysLeft = Dates.countDaysToDate(round.deadline);
+                        let gamesPerDay = Math.ceil(unplayedGamesInRound.length / daysLeft);
+
+                        if (daysLeft > 30) {
+                            this.messages.push(`Kierroksen ${round.name} pelaamattomien pelien (${unplayedGamesInRound.length}) pelaamiseen on jäljellä ${daysLeft} päivää (${gamesPerDay} peliä/päivä).`);
+                        }
+                        else if (daysLeft > 0) {
+                            this.warnings.push(`Kierroksen ${round.name} pelaamattomien pelien (${unplayedGamesInRound.length}) pelaamiseen on jäljellä enää ${daysLeft} päivää (${gamesPerDay} peliä/päivä).`);
+                        }
+                        else {
+                            this.dangers.push(`Kierroksen ${round.name} deadline on ohitettu ${-daysLeft} päivää sitten, ja pelaamattomia pelejä on jäljellä ${unplayedGamesInRound.length} kpl :(`);
+                        }
+                        if (!round.showResults) {
+                            let date = moment(round.showResultsDateAsDate).format('DD.MM.YYYY')
+                            this.messages.push(`Kierroksen ${round.name} tulokset näkyvät ${date} alkaen`);
+                        }
+                    }
+                });
+            },
+            edit() {
+                this.$router.push({
+                    name: "edit-season",
+                    params: {
+                        organizationId: this.organizationId,
+                        leagueId: this.league.id,
+                        seasonId: this.season.id
+                    }
+                });
+            },
+            goBack() {
+                this.$router.back();
+            }
+        }
+    }   
+</script>

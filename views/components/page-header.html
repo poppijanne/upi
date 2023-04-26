@@ -1,0 +1,22 @@
+<template id="page-header-template">
+    <h1 class="upi-page-header">       
+        <span class="upi-page-header-title">{{title}}</span>
+        <header-icon :icon="icon"></header-icon>
+    </h1>
+</template>
+<style>
+    h1.upi-page-header {
+        position: relative;
+        overflow: hidden;
+    }
+
+    h2.upi-page-header-title {
+        z-index: 2;
+    }
+</style>
+<script>
+    Vue.component('page-header', {
+        template: "#page-header-template",
+        props: ['title', 'icon']
+    })
+</script>

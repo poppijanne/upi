@@ -1,0 +1,448 @@
+<style>
+    th.upi-player-season-header-cell {
+        padding: 0px;
+    }
+
+    th.upi-player-season-header-cell h4 {
+        display: flex;
+        justify-content: space-between;
+    }
+
+    div.upi-player-season-header {
+        padding: 0px;
+        margin-bottom: 4px;
+    }
+
+    div.upi-player-season-header h4 {
+        display: flex;
+        justify-content: space-between;
+    }
+</style>
+<template id="player-dashboard">
+
+    <div class="container-fluid">
+
+        <page-header icon="user" :title="player.label"></page-header>
+
+        <table class="table">
+            <thead class="thead-light">
+                <tr>
+                    <th>Nimi</th>
+                    <th>Sijainti</th>
+                    <th>Numero</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>{{player.name}}</td>
+                    <td>{{player.location}}</td>
+                    <td>{{player.number}}</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <trophies-table :trophies="trophies" :leagues="leagues"></trophies-table>
+
+        <div v-if="leagues.length">
+            <template v-for="league in leagues">
+                <template v-for="stats in getSeasonStatistics(league)">
+                    <span v-if="stats.games > 0">
+                        <div class="upi-player-season-header">
+                            <h4 v-on:click="viewSeason(league.id, stats.seasonId)" class="upi-clickable">
+                                {{league.name}} / {{getSeasonLabel(stats.seasonId)}}
+                                <span>
+                                    <i class="fas fa-chevron-right"></i>
+                                </span>
+                            </h4>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-bar" role="progressbar" :class="[{'bg-success':getSeasonProgressInPercanteges(stats.seasonId) === 100}]"
+                                :style="{width: getSeasonProgressInPercanteges(stats.seasonId)+'%'}">{{getSeasonProgressInPercanteges(stats.seasonId)}}
+                                %</div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm" v-if="doesPlayerHaveGamesInSeason(stats.seasonId)" style="margin-bottom: 0px">
+                                <thead>
+                                    <tr>
+                                        <th>Pisteet</th>
+                                        <th>Pelatut</th>
+                                        <th>Jäljellä</th>
+                                        <th>Voitot</th>
+                                        <th>Tappiot</th>
+                                        <th>Tasap.</th>
+                                        <th>Jatkoajat</th>
+                                        <th>Maalit</th>
+                                        <th>Päästetyt</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>{{stats.score}}</td>
+                                        <td>{{stats.played}}</td>
+                                        <td>{{stats.unplayed}}</td>
+                                        <td>{{stats.wins}}</td>
+                                        <td>{{stats.losses}}</td>
+                                        <td>{{stats.ties}}</td>
+                                        <td>{{stats.overtimes}}</td>
+                                        <td>{{stats.goals}}</td>
+                                        <td>{{stats.opponentGoals}}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <br />
+                        <div v-if="stats.unplayedGames.length">
+                            <h2>Pelaamattomat pelit</h2>
+                            <table class="table table-sm">
+                                <tbody>
+                                    <tr v-for="game in stats.unplayedGames" v-on:click.stop="editGame(game)" class="upi-clickable">
+                                        <td colspan="2">
+                                            <a v-on:click.stop="viewPlayer(game.getOpponentId(player.id))" class="upi-clickable">
+                                                {{playerLabel(game.getOpponentId(player.id))}}
+                                            </a>
+                                        </td>
+                                        <td></td>
+                                        <td>
+                                            <span class="hide-if-width-less-than-640">{{getLeagueLabel(game.leagueId)}} /
+                                                {{getSeasonLabel(game.seasonId)}} / </span>
+                                            {{getRoundLabel(game.roundId)}}
+                                        </td>
+                                        <td class="hide-if-width-less-than-640">{{getRoundDeadline(game.roundId) | formatDate}}</td>
+                                        <td class="upi-table-link-icon-cell">
+                                            <i class="fas fa-chevron-right"></i>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>      
+                        <div v-if="stats.playedGames.length">
+                            <h2>Pelatut pelit</h2>
+                            <table class="table table-sm">
+                                <tbody>
+                                    <tr v-for="game in stats.playedGames" v-on:click.stop="viewGame(game)" class="upi-clickable">
+                                        <td>
+                                            <a v-on:click.stop="viewPlayer(game.getOpponentId(player.id))" class="upi-clickable">
+                                                {{playerLabel(game.getOpponentId(player.id))}}
+                                            </a>
+                                        </td>
+                                        <td></td>
+                                        <td>
+                                            <span class="hide-if-width-less-than-640">{{getLeagueLabel(game.leagueId)}} /
+                                                {{getSeasonLabel(game.seasonId)}} / </span>
+                                            {{getRoundLabel(game.roundId)}}
+                                        </td>
+                                        <td class="hide-if-width-less-than-640">
+                                            {{game.getOpponentGoals(player.id)}} - <b>{{game.getPlayerGoals(player.id)}}</b>
+                                            <span v-if="game.overtime && game.player1Goals !== game.player2Goals">&nbsp;J</span>
+                                        </td>
+                                        <td class="hide-if-width-less-than-640 upi-table-link-icon-cell">
+                                            <span v-if="game.comments">
+                                                <i class="fas fa-comment"></i>
+                                            </span>
+                                        </td>
+                                        <td class="upi-table-link-icon-cell">
+                                            <i class="fas fa-chevron-right"></i>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>  
+                        <br/> 
+                        <hr/> 
+                        <br/> 
+                        <br/>                                       
+                    </span>
+                </template>
+            </template>
+        </div>
+
+        <div class="upi-buttons">
+            <button type="button" class="btn btn-primary" v-on:click="muokkaa">
+                <i class="fas fa-user-edit"></i> Muokkaa
+            </button>
+            <button type="button" class="btn btn-secondary" v-on:click="goBack">
+                <i class="fas fa-undo"></i> Palaa
+            </button>
+        </div>
+    </div>
+</template>
+<script>
+    const playerDashboard = {
+        template: "#player-dashboard",
+        data() {
+            return {
+                player: {},
+                leagues: [],
+                unplayedGames: [],
+                playedGames: [],
+                trophies: [],
+                playerIdOfUser: userStore.playerIdOfUser
+            }
+        },
+        created() {
+            this.init(this.$route.params.organizationId, this.$route.params.playerId);
+        },
+        computed: {
+            isLoginButtonVisible() {
+                return this.playerIdOfUser === undefined;
+            },
+            isLogoutButtonVisible() {
+                return this.playerIdOfUser === this.player.id;
+            }
+        },
+        methods: {
+            init(organizationId, playerId) {
+
+                this.playerIdOfUser = userStore.playerIdOfUser;
+                this.organizationId = organizationId;
+                this.player = playerCache.getWithId(playerId);
+                this.playerStore = new GameStore(playerCache.players);
+                this.gameStore = new GameStore(gameCache.games);
+                this.leagueStore = new LeagueStore(leagueCache.leagues);
+
+                if (!this.player.notFound) {
+                    this.unplayedGames = this.gameStore.getUnplayedGamesOfPlayer(this.player.id);
+                }
+
+                leagueService.loadAllLeaguesInOrganization(this.organizationId).then(leagues => {
+
+                    leagues = leagues.filter(league => league.hasPlayerId(playerId))
+
+                    this.leagueStore = new LeagueStore(leagues);
+
+                    playerService.loadAllPlayersInOrganization(this.organizationId).then(players => {
+
+                        this.playerStore = new PlayerStore(players);
+                        let player = this.playerStore.getWithId(playerId);
+
+                        gameService.loadGamesOfPlayer(player).then(games => {
+
+                            this.gameStore = new GameStore(games);
+                            this.player = player;
+                            this.leagues = leagues;
+
+                            this.unplayedGames = this.gameStore.getUnplayedGamesOfPlayer(this.player.id).map(game => new Game(game));
+                            this.unplayedGames.forEach(game => {
+                                game.season = this.leagueStore.getSeasonWithId(game.seasonId);
+                                game.round = this.leagueStore.getRoundWithId(game.roundId);
+                                game.opponent = this.playerStore.getWithId(game.getOpponentId(this.player.id));
+                            });
+                            this.unplayedGames = this.unplayedGames.sort((game1, game2) => {
+                                let result = 0;
+                                if (game1.round !== undefined && game2.round !== undefined) {
+                                    result = game1.round.deadline.localeCompare(game2.round.deadline);
+                                }
+                                if (result === 0) {
+                                    result = game1.opponent.label.localeCompare(game2.opponent.label);
+                                }
+                                return result;
+                            });
+
+                            this.playedGames = this.gameStore.getPlayedGamesOfPlayer(this.player.id);
+                            this.playedGames = this.playedGames.sort((game1, game2) => {
+                                let round1 = this.leagueStore.getRoundWithId(game1.roundId);
+                                let round2 = this.leagueStore.getRoundWithId(game2.roundId);
+                                let result = 0;
+                                if (round1 !== undefined && round2 !== undefined) {
+                                    result = round1.deadline.localeCompare(round2.deadline);
+                                }
+                                if (result === 0) {
+                                    let opponent1Id = game1.getOpponentId(this.player.id);
+                                    let opponent2Id = game2.getOpponentId(this.player.id);
+                                    let opponent1 = this.playerStore.getWithId(opponent1Id);
+                                    let opponent2 = this.playerStore.getWithId(opponent2Id);
+                                    if (opponent1.label && opponent2.label) {
+                                        result = opponent1.label.localeCompare(opponent2.label);
+                                    }
+                                }
+                                return result;
+                            });
+                            /*
+                            this.stats.forEach(stats => {
+                                stats.playedGames = this.playedGames.filter(game => game.)
+                            })*/
+
+                            trophyService.loadTrophiesOfPlayer(player).then(trophies => {
+                                this.trophies = trophies;
+                            }).catch(error => {
+                                messagesDialog.showError("Haku epäonnistui", `Pelaajan palkintojen haku epäonnistui.`, error);
+                            });
+                        }).catch(error => {
+                            messagesDialog.showError("Haku epäonnistui", `Pelaajan pelien haku epäonnistui.`, error);
+                        });
+                    }).catch(error => {
+                        messagesDialog.showError("Haku epäonnistui", `Pelaajien haku epäonnistui.`, error);
+                    });
+                }).catch(error => {
+                    messagesDialog.showError("Haku epäonnistui", `Liigojen haku epäonnistui.`, error);
+                });
+
+            },
+            doesPlayerHaveGamesInSeason(seasonId) {
+                return this.gameStore.doesPlayerHaveGamesInSeason(this.player.id, seasonId);
+            },
+            getSeasonStatistics(league) {
+                let stats = league.seasons.map(season => {
+                    let stats = this.gameStore.getSinglePlayerStatistics(season.id, this.player.id);
+                    stats.label = league.name + ' / ' + season.name;
+                    stats.playedGames = this.playedGames.filter(game => game.seasonId === season.id);
+                    stats.unplayedGames = this.unplayedGames.filter(game => game.seasonId === season.id);
+                    return stats;
+                });
+                stats.sort((stats1,stats2) => stats2.label.localeCompare(stats1.label));
+                return stats;
+            },
+            getSeasonProgressInPercanteges(seasonId) {
+                let stats = this.gameStore.getSinglePlayerStatistics(seasonId, this.player.id);
+                return Math.floor((stats.played / (stats.played + stats.unplayed)) * 100)
+            },
+            getLeagueLabel(leagueId) {
+                let league = this.leagueStore.getWithId(leagueId);
+                if (league !== undefined) {
+                    return league.name;
+                }
+                return "?";
+            },
+            getSeasonLabel(seasonId) {
+
+                let season = this.leagueStore.getSeasonWithId(seasonId);
+                if (season !== undefined) {
+                    return season.name;
+                }
+                return "?";
+            },
+            playerLabel(playerId) {
+                let player = this.playerStore.getWithId(playerId);
+                if (player.notFound) {
+                    return "?";
+                }
+                return player.label;
+            },
+            getRoundLabel(roundId) {
+                let round = this.leagueStore.getRoundWithId(roundId);
+                if (round !== undefined) {
+                    return round.name;
+                }
+                return "?";
+            },
+            getRoundDeadline(roundId) {
+                let round = this.leagueStore.getRoundWithId(roundId);
+                if (round !== undefined && !round.notFound) {
+                    return round.deadline;
+                }
+                /*
+                if (round !== undefined && round.deadline !== undefined) {
+                    return round.deadline.split("-").reverse().join(".");
+                }*/
+            },
+            login() {
+                loginDialog.open(
+                    this.player.id,
+                    playerId => {
+                        this.playerIdOfUser = playerId;
+                    }
+                );
+            },
+            logout() {
+                this.$http.post('/logout', {}).then(
+                    response => {
+                        console.log(response);
+                        if (response.body.ok) {
+                            userStore.playerIdOfUser = undefined;
+                            userStore.organizationIdOfUser = undefined;
+                            this.playerIdOfUser = undefined;
+                        }
+                        else {
+                            alert(response.body.message);
+                        }
+                    },
+                    error => {
+                        console.error(error);
+                    }
+                );
+            },
+            muokkaa() {
+                this.$router.push({
+                    name: "edit-player",
+                    params: {
+                        organizationId: this.organizationId,
+                        playerId: this.player.id,
+                    }
+                });
+            },
+            goBack() {
+                this.$router.back();
+            },
+            viewSeason(leagueId, seasonId) {
+                this.$router.push({
+                    name: "view-season",
+                    params: {
+                        organizationId: this.organizationId,
+                        leagueId: leagueId,
+                        seasonId: seasonId
+                    }
+                });
+            },
+            viewPlayer(playerId) {
+                this.$router.push({
+                    name: "view-other-player",
+                    params: {
+                        organizationId: this.organizationId,
+                        playerId: playerId
+                    }
+                });
+            },
+            editGame(game) {
+
+                // check if previous games with the same opponent exists
+
+                for (let i = 0; i < this.unplayedGames.length; i++) {
+                    if (game.opponent.id === this.unplayedGames[i].opponent.id) {
+                        let firstGameWithSameOpponent = this.unplayedGames[i];
+                        if (game.id === firstGameWithSameOpponent.id) {
+                            break;
+                        }
+                        if (game.id !== firstGameWithSameOpponent.id && game.round.id !== firstGameWithSameOpponent.round.id) {
+                            confirmDialog.open(
+                                "Varmistus",
+                                `Sinulla on aikaisempi pelaamaton peli pelaajaa ${game.opponent.label} vastaan. Haluatko merkata tuloksen aikaisempaan peliin?`,
+                                "Kyllä",
+                                function () {
+                                    this.$router.push({
+                                        name: "game",
+                                        params: {
+                                            organizationId: this.organizationId,
+                                            gameId: firstGameWithSameOpponent.id
+                                        }
+                                    });
+                                }.bind(this)
+                            );
+                            return;
+                        }
+                    }
+                }
+
+                this.$router.push({
+                    name: "game",
+                    params: {
+                        organizationId: this.organizationId,
+                        gameId: game.id
+                    }
+                });
+            },
+            viewGame(game) {
+
+                this.$router.push({
+                    name: "game",
+                    params: {
+                        organizationId: this.organizationId,
+                        gameId: game.id
+                    }
+                });
+            },
+        },
+        beforeRouteUpdate(to) {
+            this.init(to.params.organizationId, to.params.playerId);
+        }
+    }
+</script>

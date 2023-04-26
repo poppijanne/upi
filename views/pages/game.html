@@ -1,0 +1,191 @@
+<template id="game-dashboard">
+    <div class="container-fluid">
+        <h1>
+            <b>{{round.name}}</b>
+            <br />
+            {{playerLabel(game.player1Id)}} - {{playerLabel(game.player2Id)}}
+        </h1>
+        <form>
+            <h2 v-if="game.player1Id === undefined">Pelaajan 1 maalit</h2>
+            <h2 v-if="game.player1Id !== undefined">{{playerLabel(game.player1Id)}} maalit</h2>
+
+            <div v-if="game.player1Id === undefined" class="form-group">
+                <select v-model="game.player1Id" class="form-control form-control-lg">
+                    <option disabled value="">Valitse</option>
+                    <option :value="player.id" v-for="player in players" :key="player.id">
+                        {{player.label}}
+                    </option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <!--
+                <input type="number" v-model.number="game.player1Goals" class="form-control form-control-lg">
+                -->
+                <score-picker v-model.number="game.player1Goals"></score-picker>
+            </div>
+
+            <h2 v-if="game.player1Id === undefined">Pelaajan 2 maalit</h2>
+            <h2 v-if="game.player1Id !== undefined">{{playerLabel(game.player2Id)}} maalit</h2>
+            <div v-if="game.player2Id === undefined" class="form-group">
+                <select v-model="game.player2Id" class="form-control form-control-lg">
+                    <option disabled value="">Valitse</option>
+                    <option :value="player.id" v-for="player in players" :key="player.id">
+                        {{player.label}}
+                    </option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <!--
+                <input type="number" v-model.number="game.player2Goals" class="form-control form-control-lg">
+                -->
+                <score-picker v-model.number="game.player2Goals"></score-picker>
+            </div>
+            <hr />
+            <div class="row form-check">
+                <div class="col-lg">
+                    <input id="game-overtime" type="checkbox" v-model="game.overtime" class="form-check-input">
+                    <label for="game-overtime" class="form-check-label"> Jatkoaika</label>
+                </div>
+            </div>
+            <br />
+            <div class="row">
+                <div class="col-lg">
+                    <label for="game-date">Pelipäivä
+                        <!--
+                        <vuejs-datepicker v-model="game.dateAsDate" name="game-date-picker" format="dd.MM.yyyy" :bootstrap-styling="true" :monday-first="true"></vuejs-datepicker>
+                        -->
+                        <upi-date-picker v-model="game.dateAsDate"></upi-date-picker>
+                    </label>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="edit-game-comments">Kommentit</label>
+                <textarea class="form-control" id="edit-game-comments" rows="3" v-model="game.comments" placeholder="Tähän voit kertoa tarkemmin pelin tapahtumista."></textarea>
+            </div>
+            <div class="upi-buttons">
+                <button type="button" class="btn btn-primary" v-on:click="save">
+                    <i class="fas fa-save"></i> Tallenna
+                </button>
+                <button type="button" class="btn btn-secondary" v-if="game.isPlayed" v-on:click="reset">
+                    <i class="fas fa-eraser"></i> Nollaa tulos
+                </button>
+                <button type="button" class="btn btn-secondary" v-on:click="cancel">
+                    <i class="fas fa-undo"></i> Peruuta
+                </button>
+            </div>
+        </form>
+    </div>
+</template>
+<script>
+    const gameDashboard = {
+        template: "#game-dashboard",
+        data() {
+            return {
+                game: new Game(),
+                league: new League(),
+                season: new Season(),
+                round: new Round(),
+                players: []
+            }
+        },
+        created() {
+            this.organizationId = this.$route.params.organizationId;
+            this.playerStore = new PlayerStore(playerCache.players);
+            this.game = gameCache.getWithId(this.$route.params.gameId);
+            if (!this.game.notFound) {
+                this.league = leagueCache.getWithId(this.game.leagueId);
+                if (!this.league.notFound) {
+                    this.season = this.league.getSeasonWithId(this.game.seasonId);
+                    this.round = this.season.getRoundWithId(this.game.roundId);
+                }
+            }
+            playerService.loadAllPlayersInOrganization(this.organizationId).then(players => {
+                this.playerStore = new PlayerStore(players);
+                gameService.loadGame(this.$route.params.gameId).then(game => {
+                    this.game = game;
+                    leagueService.loadLeague(game.leagueId).then(league => {
+                        this.league = league;
+                        this.season = this.league.getSeasonWithId(game.seasonId);
+                        this.round = this.season.getRoundWithId(game.roundId);
+
+                        if (!game.isPlayed) {
+                            game.dateAsDate = new Date();
+                        }
+                        this.players = players;
+                    });
+                });
+            });
+        },
+        methods: {
+            playerLabel(playerId) {
+                if (playerId === undefined) {
+                    return "?";
+                }
+                let player = this.playerStore.getWithId(playerId);
+                return player.label;
+            },
+            save() {
+                this.game.isPlayed = true;
+                if (this.game.date === undefined) {
+                    this.date = generateTimestamp();
+                }
+                if (this.game.player1Goals === this.game.player2Goals) {
+                    this.game.overtime = true;
+                }
+                let reporter = new GameReporter();
+                let report = reporter.report(
+                    this.game, 
+                    this.round,
+                    this.playerStore.getWithId(this.game.player1Id), 
+                    this.playerStore.getWithId(this.game.player2Id)
+                );
+                
+                gameService.saveGame(this.game).then(game => {
+                    logService.saveLog(new Log({
+                        type: LogTypes.REPORT,
+                        text: report,
+                        organizationId: this.organizationId,
+                        gameId: game.id,
+                        seasonId: game.seasonId,
+                        leagueId: game.leagueId,
+                        roundId: game.roundId
+                    }));
+                    this.$router.back();
+                }).catch(error => {
+                    messagesDialog.showError("Tallennus epäonnistui", `Pelin tietojen tallennus epäonnistui.`, error);
+                });
+               console.log(report);
+            },
+            reset() {
+
+                confirmDialog.open(
+                    "Varmistus",
+                    `Oletko varma, että haluat nollata pelin tuloksen?`,
+                    "Nollaa",
+                    function () {
+                        this.game.isPlayed = false;
+                        this.game.date === undefined;
+                        this.game.player1Goals = 0;
+                        this.game.player2Goals = 0;
+                        this.game.overtime = false;
+
+                        gameService.saveGame(this.game).then(game => {
+                            this.$router.back();
+                        }).catch(error => {
+                            messagesDialog.showError("Nollaus epäonnistui", `Pelin tietojen nollaus epäonnistui.`, error);
+                        });
+                    }.bind(this)
+                );
+                return;
+            },
+            cancel() {
+                this.$router.back();
+            }
+        },
+        components: {
+            vuejsDatepicker
+        }
+    };
+</script>

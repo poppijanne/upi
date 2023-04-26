@@ -1,0 +1,173 @@
+<template id="organization-dashboard">
+    <div class="container-fluid">
+        <page-header icon="home" :title="organization.name"></page-header>
+        <!-- ei vielä näkyviin
+        <div v-if="logs.length" class="upi-messages">
+            <div v-for="log in logs" class="alert alert-primary">
+                {{log.timestamp | formatDate}} {{log.text}}
+            </div>
+        </div>
+        -->
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Liiga / turnaus</th>
+                    <th>Kaudet</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr v-for="league in leagues" v-on:click="viewLeague(league)" class="upi-clickable">
+                    <td>
+                        {{league.name}}
+                    </td>
+                    <td>
+                        <span v-for="(season,index) in league.seasons">
+                            <a v-on:click.stop="viewSeason(league, season)" class="upi-clickable">{{season.name}}
+                                
+                            </a>
+                        </span>
+                    </td>
+                    <td class="upi-table-link-icon-cell" style="vertical-align: middle">
+                        <i class="fas fa-chevron-right"></i>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        <br/>
+        <div class="row form-check">
+            <div class="col-lg">
+                <label class="form-check-label">
+                    <input type="checkbox" v-model="showActiveOnly" class="form-check-input"> Näytä vain aktiiviset pelaajat
+                </label>
+            </div>
+        </div>
+        <br/>
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th>Pelaaja</th>
+                    <th>Nimi</th>
+                    <th class="upi-table-player-number-cell">Pelinumero</th>
+                    <th class="hide-if-width-less-than-640">Sijainti</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr v-for="player in filteredPlayers" v-on:click="viewPlayer(player)" class="upi-clickable" :class="{'upi-player-retired':!player.active}">
+                    <td>
+                        {{player.alias}}
+                    </td>
+                    <td>{{player.name}}</td>
+                    <td class="upi-table-player-number-cell">{{player.number}}</td>
+                    <td class="hide-if-width-less-than-640">{{player.location}}</td>
+                    <td class="upi-table-link-icon-cell">
+                        <i class="fas fa-chevron-right"></i>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        <div class="upi-buttons">
+            <button type="button" class="btn btn-primary" v-on:click="addNewPlayer">
+                <i class="fas fa-user-plus"></i> Lisää uusi pelaaja
+            </button>
+            <!--
+            <button type="button" class="btn btn-primary" v-on:click="addNewLeague">
+                <i class="fas fa-plus"></i> Lisää uusi liiga / turnaus
+            </button>
+            -->
+        </div>
+    </div>
+</template>
+<script>
+    const organizationDashboard = {
+        template: "#organization-dashboard",
+        data: function () {
+            return {
+                organization: new Organization(),
+                players: [],
+                leagues: [],
+                logs: [],
+                showActiveOnly: true
+            }
+        },
+        computed: {
+            filteredPlayers() {
+                if (this.showActiveOnly) {
+                    return this.players.filter(player => player.active);
+                }
+                return this.players;
+            }
+        },
+        created: function () {
+            this.organization = organizationCache.getWithId(this.$route.params.organizationId);
+            this.players = playerCache.players;
+            this.leagues = leagueCache.leagues;
+            organizationService.loadOrganization(this.$route.params.organizationId).then(organization => {
+
+                this.organization = organization;
+
+                playerService.loadAllPlayersInOrganization(this.organization.id).then(players => {
+                    this.players = players;
+                }).catch(error => {
+                    messagesDialog.showError("Lataus epäonnistui", `Organisaation pelaajien haku epäonnistui.`, error);
+                    logger.logError(`Organisaation pelaajien haku epäonnistui.`, error);
+                });
+
+                leagueService.loadAllLeaguesInOrganization(this.organization.id).then(leagues => {
+                    this.leagues = leagues;
+                }).catch(error => {
+                    messagesDialog.showError("Lataus epäonnistui", `Organisaation liigojen haku epäonnistui.`, error);
+                    logger.logError(`Organisaation liigojen haku epäonnistui.`, error);
+                });
+
+                logService.loadLogsOfOrganization(this.organization.id).then(logs => {
+                    this.logs = logs;
+                }).catch(error => {
+                    messagesDialog.showError("Lataus epäonnistui", `Organisaation lokien haku epäonnistui.`, error);
+                    logger.logError(`Organisaation lokien haku epäonnistui.`, error);
+                });
+            }).catch(error => {
+                messagesDialog.showError("Lataus epäonnistui", `Organisaation tietojen haku epäonnistui.`, error);
+                logger.logError(`Organisaation tietojen haku epäonnistui.`, error);
+            });
+        },
+        methods: {
+            addNewPlayer() {
+                this.$router.push({
+                    name: "new-player",
+                    params: {
+                        organizationId: this.organization.id
+                    }
+                });
+            },
+            viewPlayer(player) {
+                this.$router.push({
+                    name: "view-player",
+                    params: {
+                        organizationId: this.organization.id,
+                        playerId: player.id
+                    }
+                });
+            },
+            editPlayer(player) {
+                this.$router.push({
+                    name: "edit-player",
+                    params: {
+                        organizationId: this.organization.id,
+                        playerId: player.id
+                    }
+                });
+            },
+            viewLeague(league) {
+                this.$router.push({ name: "view-league", params: { leagueId: league.id, organizationId: this.organization.id } });
+            },
+            viewSeason(league, season) {
+                this.$router.push({ name: 'view-season', params: { organizationId: this.organization.id, leagueId: league.id, seasonId: season.id } });
+            },
+            addNewLeague() {
+                this.$router.push({ name: 'new-league', params: { organizationId: this.organization.id } });
+            }
+        }
+    };    
+</script>

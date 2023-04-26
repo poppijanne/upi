@@ -1,0 +1,110 @@
+<template id="edit-player">
+    <div class="container-fluid">
+        <page-header icon="user-edit" :title="playerTitle"></page-header>
+        <form id="player-form">
+            <div class="form-group">
+                <label for="player-alias">Pelaajanimi</label>
+                <input id="player-alias" type="text" v-model="player.alias" class="form-control" aria-describedby="player-alias-help" placeholder="Syötä pelaajanimi">
+                <small id="player-alias-help" class="form-text text-muted">Listoissa ja taulukoissa käytetty pelaajan "taiteilijanimi". Jos pelaajanimi puuttuu, näytetään pelaajan
+                    koko nimi.</small>
+            </div>
+            <div class="form-group">
+                <label for="player-name">Nimi</label>
+                <div class="alert alert-danger" v-for="error in validationResult.getFieldErrors('name')">
+                    {{error.message}}
+                </div>
+                <input type="text" id="player-name" v-model="player.name" class="form-control" :class="{'is-valid': validationResult.doesFieldHaveErrors('name')}"
+                    placeholder="Etunimi Sukunimi">
+                <small class="form-text text-muted">Pelaajan oikea nimi (etunimi sukunimi)</small>
+            </div>
+            <div class="form-group">
+                <label for="player-number">Pelinumero</label>
+                <input type="number" id="player-number" v-model.number="player.number" class="form-control" placeholder="Syötä pelinumero">
+            </div>
+            <div class="form-group">
+                <label for="player-location">Sijainti</label>
+                <input type="text" id="player-location" v-model="player.location" class="form-control" placeholder="Sijainti (kaupunki, toimipiste tms.)">
+            </div>
+            <div class="form-check">
+                <input type="checkbox" id="player-active" v-model="player.active" class="form-check-input">
+                <label for="player-active" class="form-check-label">Aktiivinen</label>
+                <small id="player-active-help" class="form-text text-muted">Onko pelaaja vielä aktiivinen ja lisättävissä uusiin peleihin.</small>
+            </div>
+            <div class="upi-buttons">
+                <button type="button" class="btn btn-primary" v-on:click="save">
+                    <i class="fas fa-save"></i> Tallenna
+                </button>
+                <!--
+                <button v-if="!isNew" type="button" class="btn btn-danger" v-on:click="remove">
+                    <i class="fas fa-trash-alt"></i> Poista pelaaja
+                </button>
+                -->
+                <button type="button" class="btn btn-secondary" v-on:click="cancel">
+                    <i class="fas fa-undo"></i> Palaa
+                </button>
+            </div>
+        </form>
+    </div>
+</template>
+<script>
+    const editPlayer = {
+        template: "#edit-player",
+        data() {
+            return {
+                isNew: false,
+                player: new Player(),
+                validationResult: new ValidationResult()
+            }
+        },
+        created() {
+            this.organizationId = this.$route.params.organizationId;
+            if (this.$route.params.playerId !== undefined) {
+                playerService.loadPlayer(this.$route.params.playerId).then(player => {
+                    this.player = player;
+                });
+            } else {
+                this.isNew = true;
+            }
+        },
+        computed: {
+            playerTitle() {
+                if (this.player.label === undefined || this.player.label === "") {
+                    return "Pelaajan tiedot";
+                }
+                return this.player.label;
+            }
+        },
+        methods: {
+            save() {
+                playerService.validatePlayer(this.player).then(validationResult => {
+
+                    this.validationResult = validationResult;
+
+                    if (validationResult.ok) {
+                        this.player.organizationId = this.organizationId;
+
+                        playerService.savePlayer(this.player).then(player => {
+                            this.$router.back();
+                            //messagesDialog.showMessage("Tallennus onnistui", `Pelaajan ${player.label} tietojen tallennus onnistui.`);
+                        }).catch(error => {
+                            messagesDialog.showError("Tallennus epäonnistui", `Pelaajan ${this.player.label} tietojen tallennus epäonnistui.`, error);
+                        });
+                    }
+                }).catch(error => {
+                    messagesDialog.showError("Validointi epäonnistui", `Pelaajan ${this.player.label} tietojen tarkistus epäonnistui teknisen virheen takia.`, error);
+                });
+            },
+            cancel() {
+                this.$router.back();
+            },
+            remove() {
+                playerService.deletePlayer(this.player).then(deletedPlayer => {
+                    this.$router.back();
+                    messagesDialog.showMessage("Poisto onnistui", `Pelaajan ${player.label} tietojen poisto onnistui.`);
+                }).catch(error => {
+                    messagesDialog.showError("Poisto epäonnistui", `Pelaajan ${this.player.label} tietojen poisto epäonnistui.`, error);
+                });
+            }
+        }
+    };
+</script>

@@ -1,0 +1,268 @@
+<template id="edit-season">
+    <div class="container-fluid">
+        <page-header icon="trophy" :title="league.name + ' / ' + season.name"></page-header>
+        <form>
+            <div class="form-group">
+                <label for="edit-season-name">Nimi</label>
+                <input id="edit-season-name" type="text" v-model="season.name" class="form-control" placeholder="Syötä kauden nimi (esim. 2018)"
+                    required>
+            </div>
+        </form>
+        <template v-if="!isNew">
+            <h2>Lohkot</h2>
+            <table class="table">
+                <tbody>
+                    <tr v-for="division in season.divisions" v-on:click="editDivision(division)" class="upi-clickable">
+                        <td>
+                            {{division.name}}
+                        </td>
+                        <td class="upi-table-link-icon-cell">
+                            <i class="fas fa-chevron-right"></i>
+                        </td>
+                    </tr>
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="2">
+                            <button v-on:click="addNewDivision" class="btn btn-primary upi-button">
+                                <i class="fas fa-plus"></i> Lisää uusi lohko
+                            </button>
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+            <br/>
+            <h2>Sarjat</h2>
+            <table class="table">
+                <tbody>
+                    <template v-for="round in season.rounds">
+                        <tr v-on:click="editRound(round)" class="upi-clickable">
+                            <td>{{round.name}}</td>
+                            <td class="upi-table-link-icon-cell">
+                                <i class="fas fa-chevron-right"></i>
+                            </td>
+                        </tr>
+                    </template>
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="2">
+                            <button v-on:click="addNewRound" class="btn btn-primary upi-button">
+                                <i class="fas fa-plus"></i> Lisää uusi sarja
+                            </button>
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+            <br/>
+            <h2>Palkinnot</h2>
+            <table class="table">
+                <tbody>
+                    <template v-for="trophy in trophies">
+                        <tr v-on:click="editTrophy(trophy)" class="upi-clickable">
+                            <td>{{trophy.name}}</td>
+                            <td class="upi-table-link-icon-cell">
+                                <i class="fas fa-chevron-right"></i>
+                            </td>
+                        </tr>
+                    </template>
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="2">
+                            <button v-on:click="addNewTrophy" class="btn btn-primary upi-button">
+                                <i class="fas fa-plus"></i> Lisää uusi palkinto
+                            </button>
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </template>
+
+        <div class="upi-buttons">
+            <button v-on:click="save" class="btn btn-primary">
+                <i class="fas fa-save"></i> Tallenna
+            </button>
+            <button v-if="!isNew" type="button" class="btn btn-danger" v-on:click="remove">
+                <i class="fas fa-trash-alt"></i> Poista
+            </button>
+            <button v-if="isNew" v-on:click="cancel" class="btn btn-secondary">
+                <i class="fas fa-undo"></i> Peruuta
+            </button>
+            <button v-if="!isNew" v-on:click="cancel" class="btn btn-secondary">
+                <i class="fas fa-undo"></i> Palaa
+            </button>
+        </div>
+    </div>
+</template>
+<script>
+    const editSeason = {
+        template: "#edit-season",
+        data() {
+            return {
+                league: new League(),
+                season: new Season(),
+                trophies: [],
+                isNew: false
+            }
+        },
+        created() {
+
+            this.organizationId = this.$route.params.organizationId;
+            //this.playerStore = new PlayerStore(playerCache.players);
+            //this.gameStore = new GameStore(gameCache.games);
+
+            leagueService.loadLeague(this.$route.params.leagueId).then(league => {
+
+                let season;
+
+                if (this.$route.params.seasonId !== undefined) {
+                    season = league.getSeasonWithId(this.$route.params.seasonId);
+                    season.divisions = season.divisions.sort((div1, div2) => div1.level < div2.level);
+                    this.season = season;
+                    this.league = league;
+
+                    trophyService.loadTrophiesInSeason(season.id).then(trophies => {
+                        this.trophies = trophies;
+                    }).catch(error => {
+                        messagesDialog.showError("Lataus epäonnistui", `Kauden palkintojen haku epäonnistui.`, error);
+                        logger.logError(`Kauden palkintojen haku epäonnistui.`, error);
+                    });
+                    /*
+                    gameService.loadGamesInSeason(season.id).then(games => {
+                        playerService.loadAllPlayersInOrganization(this.$route.params.organizationId).then(players => {
+                            this.playerStore.addAll(players);
+                            this.gameStore.addAll(games);
+                            this.season = season;
+                            this.league = league;
+                            this.seasonStatistics = this.gameStore.getStatistics(games);
+                        }).catch(error => {
+                            messages.showError("Lataus epäonnistui", `Pelaajien tietojen haku epäonnistui.`, error);
+                            logger.logError(`Pelaajien tietojen haku epäonnistui.`, error);
+                        });
+    
+                    }).catch(error => {
+                        messages.showError("Lataus epäonnistui", `Kauden pelien haku epäonnistui.`, error);
+                        logger.logError(`Kauden pelien haku epäonnistui.`, error);
+                    });*/
+                } else {
+                    this.isNew = true;
+                    this.season = new Season();
+                    this.league = league;
+                }
+
+            }).catch(error => {
+                messagesDialog.showError("Lataus epäonnistui", `Kauden tietojen haku epäonnistui.`, error);
+                logger.logError(`Kauden tietojen haku epäonnistui.`, error);
+            });
+        },
+        methods: {
+            addNewDivision() {
+                this.$router.push({
+                    name: "new-division",
+                    params: {
+                        organizationId: this.organizationId,
+                        leagueId: this.league.id,
+                        seasonId: this.season.id
+                    }
+                });
+            },
+            editDivision(division) {
+                this.$router.push({
+                    name: "edit-division",
+                    params: {
+                        organizationId: this.organizationId,
+                        leagueId: this.league.id,
+                        seasonId: this.season.id,
+                        divisionId: division.id
+                    }
+                });
+            },
+            editRound(round) {
+                this.$router.push({
+                    name: "edit-round",
+                    params: {
+                        organizationId: this.organizationId,
+                        leagueId: this.league.id,
+                        seasonId: this.season.id,
+                        roundId: round.id
+                    }
+                });
+            },
+            addNewRound() {
+                this.$router.push({
+                    name: "new-round",
+                    params: {
+                        organizationId: this.organizationId,
+                        leagueId: this.league.id,
+                        seasonId: this.season.id
+                    }
+                });
+            },
+            addNewTrophy() {
+                this.$router.push({
+                    name: "new-trophy",
+                    params: {
+                        organizationId: this.organizationId,
+                        leagueId: this.league.id,
+                        seasonId: this.season.id
+                    }
+                });
+            },
+            editTrophy(trophy) {
+                this.$router.push({
+                    name: "edit-trophy",
+                    params: {
+                        organizationId: this.organizationId,
+                        leagueId: this.league.id,
+                        seasonId: this.season.id,
+                        trophyId: trophy.id
+                    }
+                });
+            },
+            save() {
+                if (this.isNew) {
+                    this.league.addSeason(this.season);
+                }
+                leagueService.saveLeague(this.league).then(league => {
+                    this.league = league;
+                    this.season = league.getSeasonWithId(this.season.id);
+                    this.isNew = false;
+                    this.$router.push({
+                        name: "view-season",
+                        params: {
+                            organizationId: this.organizationId,
+                            leagueId: this.league.id,
+                            seasonId: this.season.id
+                        }
+                    });
+                }).catch(error => {
+                    messagesDialog.showError("Tallennus epäonnistui", `Kauden tietojen tallennus epäonnistui.`, error);
+                    logger.logError(`Kauden tietojen tallennus epäonnistui.`, error);
+                });
+            },
+            remove() {
+
+                if (this.season.rounds.length === 0 && this.season.divisions.length === 0) {
+
+                    this.league.removeSeason(this.season);
+
+                    leagueService.saveLeague(this.league).then(league => {
+                        this.$router.push({
+                            name: "view-league",
+                            params: {
+                                organizationId: this.organizationId,
+                                leagueId: this.league.id
+                            }
+                        });
+                    });
+                } else {
+                    messagesDialog.showError("Kautta ei voi poistaa", "Poista ensin kaikki kauteen liittyvät pelit ja lohkot");
+                }
+            },
+            cancel() {
+                this.$router.back();
+            }
+        }
+    }
+</script>

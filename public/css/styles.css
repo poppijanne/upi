@@ -1,0 +1,304 @@
+#app {
+	max-width: 1024px;
+    margin-left: auto;
+    margin-right: auto;
+    box-shadow: 0px 0px 20px #2222;
+    padding-bottom: 20px;
+    background-color: #fff;
+    min-height: 100vh;
+}
+
+#app-header {
+    background-color: rgb(128, 128, 128);
+    background: linear-gradient(rgb(105, 105, 105), rgb(128, 128, 128) 20%);
+    color: #FFF;
+    padding: 4px;
+    padding-left: 16px;
+    font-size: 1.2em;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+}
+
+#app-footer {
+    background-color: rgb(128, 128, 128);
+    color: #FFF;
+    padding: 4px;
+    padding-left: 16px;
+    font-size: 1.2em;
+    position: fixed;
+    bottom: 0px;
+    width: 100%;
+}
+
+#app-main {
+    margin-bottom: 50px;
+}
+
+body {
+    background-color: #f1f1f1;
+    background: linear-gradient(rgb(175, 175, 175), #f1f1f1 50px);
+}
+
+h1 {
+    background-color: #098dde;
+    border: 3px solid #098dde;
+    color: #FFF;
+    padding: 6px;
+}
+
+h2 {
+    font-size: 2rem;
+    background-color: #8cd24e;
+    color: #FFF;
+    padding: 10px;
+    margin-bottom: 0px;    
+}
+
+h1,
+h2,
+h3 {
+    text-align: center;
+}
+
+h4 {
+    font-size: 1.5rem;
+    padding: 8px;
+    background-color: #fb8f2f;
+    color: #FFF;
+    margin: 0px;    
+}
+
+th {
+    vertical-align: middle !important;
+}
+
+nav a {
+    color: #FFF;
+    padding: 5px;
+    padding-left: 12px;
+    padding-right: 12px;
+    border: 0;
+    border-radius: 5px;	
+	cursor: pointer;
+	margin-right: 10px;
+	font-size: 1.2em;
+}
+
+nav a:hover {
+    color: #FFF;
+    background-color: rgba(0,0,0,0.2);
+    text-shadow: 0px 1px 3px #2d2d2d;
+}
+/*
+.table {
+    border: 1px solid #e4e4e4;
+}*/
+
+.table td {
+    border-top: 1px solid #dee2e6;
+}
+
+.table th {
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+}
+/*
+.table tr.upi-clickable:hover td:first-child {
+    border-left: 1px solid #dee2e6;
+}
+
+.table tr.upi-clickable:hover td:last-child {
+    border-right: 1px solid #dee2e6;
+}
+
+.table tr.upi-clickable:last-child td {
+    border-bottom: 1px solid #dee2e6;
+}
+*/
+.modal {
+    background-color: rgba(100, 100, 100, 0.6);
+}
+
+.upi-tagline {
+    text-align: center;
+    color: #666;
+}
+
+tr.upi-table-divider-row th{
+    border-bottom: 2px solid #e2e2e2;
+}
+
+.upi-table-check-icon-cell {
+    text-align: center !important;
+    vertical-align: middle !important;
+}
+
+.upi-table-arrow-icon-cell {
+    width: 50px;
+    text-align: center;
+}
+
+.upi-table-actions-cell {
+    min-width: 100px;
+    text-align: right;
+}
+
+.upi-table-link-icon-cell {
+    width: 50px;
+    text-align: right;
+}
+
+.upi-table-player-label-cell {
+    /*width: 200px;*/
+}
+
+.upi-table-player-number-cell {}
+
+.upi-table-game-goals-cell {
+    max-width: 50px;
+    text-align: center;
+}
+
+.upi-table-vs-cell {
+    width: 20px;
+    text-align: center;
+}
+
+.upi-table-trophy-row td {
+	vertical-align: middle;
+}
+
+.upi-clickable {
+    cursor: pointer;
+}
+
+tr.upi-clickable {
+    background-color: #F8F8FF;
+}
+
+tr.upi-clickable:hover {
+    background-color: #E8E8FF;
+}
+
+.upi-clickable td,
+.upi-clickable th {
+    cursor: pointer;
+    color: #5454e6;
+    border-top: 1px solid #c1e0ff;
+}
+
+.upi-player-retired td {
+	color: #b7b7ff;
+}
+
+
+a.upi-clickable {
+    cursor: pointer;
+    color: #4747ef !important;
+    padding: 5px;
+    border-radius: 6px;
+    /*text-decoration: underline !important;*/
+}
+
+a.upi-clickable:hover {
+    background-color:#5a5ac345;
+}
+
+h4.upi-clickable:hover {
+    background-color:#f57a0d;
+}
+/*
+.upi-clickable a:hover {
+    color: #3737df;
+}*/
+
+.upi-input-goal-input {
+    width: 70px;
+    display: inline-block;
+}
+
+.upi-game-goal-input {
+    width: 200px;
+}
+
+.upi-modal-bg {
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.7);
+    position: fixed;
+}
+
+.upi-buttons {
+    display: flex;
+    flex-flow: row;
+    border-top: 1px solid #CCC;
+    padding-top: 16px;
+    margin-top: 16px;
+}
+
+.upi-buttons button {
+    margin: 8px;
+    margin-bottom: 8px;
+    padding: 8px;
+    width: 100%;
+    display: block;
+    font-size: 1.1em;
+}
+
+button.upi-button {
+    margin-bottom: 8px;
+    padding: 8px;
+    width: 100%;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.upi-dialog-buttons button {
+    font-size: 1.1em;
+    width: 100%;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+    transition: opacity .5s;
+}
+
+.fade-enter,
+.fade-leave-to {
+    opacity: 0;
+}
+
+.slide-enter-active,
+.slide-leave-active {
+    transition: transform .2s, opacity .2s;
+    transition-timing-function: ease-out;
+}
+
+.slide-enter,
+.slide-leave-to {
+    transform: translate(-100px, 0px);
+    opacity: 0;
+    position: fixed;
+}
+
+@media (max-width: 640px) {
+
+    h1 {
+        font-size: 1.8rem;
+    }
+
+    h2 {
+        font-size: 1.5rem;
+    }
+
+    .upi-table-player-number-cell {
+        display: none;
+    }
+
+    .hide-if-width-less-than-640 {
+        display: none !important;
+    }
+}

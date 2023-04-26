@@ -1,0 +1,205 @@
+<template id="edit-division">
+    <div class="container-fluid">
+        <page-header icon="users" :title="division.name"></page-header>
+        <form>
+            <div class="form-group">
+                <label for="edit-division-name">Nimi</label>
+                <input id="edit-division-name" type="text" v-model="division.name" class="form-control" placeholder="Syötä lohkon nimi">
+            </div>
+            <div class="form-group">
+                <label for="edit-round-level">Sarjataso</label>
+                <input id="edit-round-level" type="number" min="1" v-model.number="division.level" class="form-control" placeholder="Sarjan taso numerona">
+                <small class="form-text text-muted">1 on alin sarjataso, 2 sitä seuraava jne.</small>
+            </div>
+            <!--
+            <div class="form-group">
+                <label for="edit-round-promotionLevel">Nousuraja</label>
+                <input id="edit-round-promotionLevel" type="number" min="1" v-model.number="division.promotionLimit" class="form-control"
+                    placeholder="Pelaajien lukumäärä">
+                <small class="form-text text-muted">Kuinka moni pelaaja lohkosta voi nousta seuraavalle sarjatasolle</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="edit-round-promotionLevel">Pudotusraja</label>
+                <input id="edit-round-promotionLevel" type="number" min="1" v-model.number="division.demotionLimit" class="form-control"
+                    placeholder="Pelaajien lukumäärä">
+                <small class="form-text text-muted">Kuinka moni pelaaja lohkosta voi pudota alemmalle sarjatasolle</small>
+            </div>
+            -->
+        </form>
+        <table class="table">
+            <tbody>
+                <tr>
+                    <td style="width:50%">
+                        <table class="table">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th colspan="2">Lohkon pelaajat</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="player in divisionPlayers()" :key="player.id" v-on:click="removePlayerFromDivision(player)" class="upi-clickable">
+                                    <td>{{player.label}}</td>
+                                    <td class="upi-table-arrow-icon-cell">
+                                        <i class="fas fa-arrow-right"></i>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </td>
+                    <td style="width:50%">
+                        <table class="table">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th colspan="2">Lohkottomat pelaajat</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="player in nonDivisionPlayers()" :key="player.id" v-on:click="addPlayerToDivision(player)" class="upi-clickable">
+                                    <td class="upi-table-arrow-icon-cell">
+                                        <i class="fas fa-arrow-left"></i>
+                                    </td>
+                                    <td>{{player.label}}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        <br/>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th colspan="3">Pudotus- ja nousurajat</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr v-for="(limit,index) in division.promotionLimits">
+                    <td>
+                        <input type="text" v-model="limit.label" class="form-control" />
+                    </td>
+                    <td>
+                        <input type="number" min="1" v-model.number="limit.limit" class="form-control" />
+                    </td>
+                    <td style="text-align: right">
+                        <button type="button" class="btn btn-sm btn-danger" title="Poista raja" v-on:click="removeLimit(index)">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </td>
+                </tr>
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="3">
+                        <button v-on:click="addNewLimit" class="btn btn-primary upi-button">
+                            <i class="fas fa-plus"></i> Lisää uusi raja
+                        </button>
+                    </td>
+                </tr>
+            </tfoot>
+        </table>
+        <div class="upi-buttons">
+            <button type="button" class="btn btn-primary" v-on:click="save">
+                <i class="fas fa-save"></i> Tallenna
+            </button>
+            <button v-if="!isNew" type="button" class="btn btn-danger" v-on:click="remove">
+                <i class="fas fa-trash-alt"></i> Poista
+            </button>
+            <button type="button" class="btn btn-secondary" v-on:click="cancel">
+                <i class="fas fa-undo"></i> Palaa
+            </button>
+        </div>
+    </div>
+</template>
+<script>
+    const editDivision = {
+        template: "#edit-division",
+        data() {
+            return {
+                isNew: false,
+                league: new League(),
+                season: new Season(),
+                division: new Division()
+            }
+        },
+        created() {
+
+            this.organizationId = this.$route.params.organizationId;
+
+            this.playerStore = new PlayerStore();
+
+            leagueService.loadLeague(this.$route.params.leagueId).then(league => {
+                playerService.loadAllPlayersInOrganization(this.organizationId).then(players => {
+                    players = players.filter(player => player.active);
+                    this.playerStore.addAll(players);
+                    this.league = league;
+                    this.season = league.getSeasonWithId(this.$route.params.seasonId);
+                    if (this.$route.params.divisionId !== undefined) {
+                        this.division = this.season.getDivisionWithId(this.$route.params.divisionId);
+                    } else {
+                        this.isNew = true;
+                        this.division = new Division();
+                    }
+                }).catch(error => {
+                    messagesDialog.showError("Lataus epäonnistui", `Pelaajien haku epäonnistui.`, error);
+                    logger.logError(`Pelaajien haku epäonnistui.`, error);
+                });
+            }).catch(error => {
+                messagesDialog.showError("Lataus epäonnistui", `Liigan tietojen haku epäonnistui.`, error);
+                logger.logError(`Liigan tietojen haku epäonnistui.`, error);
+            });
+        },
+        methods: {
+            divisionPlayers() {
+                return this.division.playerIds.map(id => this.playerStore.getWithId(id));
+            },
+            nonDivisionPlayers() {
+                let playerIdsInLeague = this.playerStore.getIds();
+                let playerIdsInDivisions = this.season.getPlayerIdsInOtherDivisions(this.division);
+                playerIdsInDivisions = [...playerIdsInDivisions, ...this.division.playerIds];
+                let playerIds = playerIdsInLeague.filter(playerIdInLeague =>
+                    playerIdsInDivisions.find(playerIdInDivision =>
+                        playerIdInDivision === playerIdInLeague) === undefined);
+                return playerIds.map(id => this.playerStore.getWithId(id));
+            },
+            addPlayerToDivision(player) {
+                this.division.playerIds.push(player.id);
+            },
+            removePlayerFromDivision(player) {
+                this.division.playerIds = this.division.playerIds.filter(playerId => playerId !== player.id);
+            },
+            addNewLimit() {
+                this.division.promotionLimits.push({
+                    label: "",
+                    limit: 1
+                });
+            },
+            removeLimit(index) {
+                this.division.promotionLimits.splice(index, 1)
+            },
+            save() {
+                if (this.isNew) {
+                    this.season.divisions.push(this.division);
+                }
+                leagueService.saveLeague(this.league).then(league => {
+                    this.$router.back();
+                    //messagesDialog.showMessage("Tallennus onnistui", `Lohkon ${this.division.name} tietojen tallennus onnistui.`);
+                }).catch(error => {
+                    messagesDialog.showError("Tallennus epäonnistui", `Liigan lohkon tietojen tallennus epäonnistui.`, error);
+                    logger.logError(`Liigan lohkon tietojen tallennus epäonnistui.`, error);
+                });
+            },
+            cancel() {
+                this.$router.back();
+            },
+            remove() {
+                this.season.removeDisivion(this.division);
+                leagueService.saveLeague(this.league).then(league => {
+                    this.$router.back();
+                    messagesDialog.showMessage("Poisto onnistui", `Lohkon ${this.division.name} tietojen poisto onnistui.`);
+                });
+            }
+        }
+    };
+</script>

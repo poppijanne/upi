@@ -1,0 +1,166 @@
+<template id="trophy-editor">
+    <div class="container-fluid">
+        <page-header icon="trophy" :title="trophyTitle"></page-header>
+        <form id="trophy-form">
+            <div class="form-group">
+                <label for="trophy-alias">Palkinnon nimi</label>
+                <input id="trophy-alias" type="text" v-model="trophy.name" class="form-control" placeholder="Syötä palkinnon nimi">
+            </div>
+            <div class="form-group">
+                <label for="trophy-player">Voittaja</label>
+                <select class="form-control" v-model="trophy.playerId">
+                    <option disabled value="">Valitse</option>
+                    <option v-for="player in players" :value="player.id">
+                        {{player.label}}
+                    </option>
+                </select>
+            </div>
+            <label>Tyyppi</label>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" value="TROPHY" id="edit-throphy-type-trophy" v-model="trophy.type">
+                <label class="form-check-label" for="edit-throphy-type-trophy">
+                    <i class="fas fa-trophy fa-fw"></i>
+                    Palkinto
+                </label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" value="AWARD" id="edit-throphy-type-award" v-model="trophy.type">
+                <label class="form-check-label" for="edit-throphy-type-award">
+                    <i class="fas fa-award fa-fw"></i>
+                    Kunniamaininta
+                </label>
+            </div>
+            <br/>
+            <div class="form-group">
+                <label for="trophy-rank">Järjestys</label>
+                <input id="trophy-rank" type="number" v-model.number="trophy.rank" class="form-control" placeholder="1, 2 tai 3 jne">
+                <small id="player-rank-help" class="form-text text-muted">Järjestysnumero määrittelee palkinnon järjestyksen listoissa. 1 = ensimmäinen, 2 = toinen jne.
+                </small>
+
+            </div>
+            <!--
+                <div class="form-group">
+                    <label for="player-name">Nimi</label>
+                    <div class="alert alert-danger" v-for="error in validationResult.getFieldErrors('name')">
+                        {{error.message}}
+                    </div>
+                    <input type="text" id="player-name" v-model="player.name" class="form-control" :class="{'is-valid': validationResult.doesFieldHaveErrors('name')}"
+                        placeholder="Etunimi Sukunimi">
+                    <small class="form-text text-muted">Pelaajan oikea nimi (etunimi sukunimi)</small>
+                </div>
+                <div class="form-group">
+                    <label for="player-number">Pelinumero</label>
+                    <input type="number" id="player-number" v-model.number="player.number" class="form-control" placeholder="Syötä pelinumero">
+                </div>
+                <div class="form-group">
+                    <label for="player-location">Sijainti</label>
+                    <input type="text" id="player-location" v-model="player.location" class="form-control" placeholder="Sijainti (kaupunki, toimipiste tms.)">
+                </div>
+                <div class="form-check">
+                    <input type="checkbox" id="player-active" v-model="player.active" class="form-check-input">
+                    <label for="player-active" class="form-check-label">Aktiivinen</label>
+                    <small id="player-active-help" class="form-text text-muted">Onko pelaaja vielä aktiivinen ja lisättävissä uusiin peleihin.</small>
+                </div>
+            -->
+            <div class="upi-buttons">
+                <button type="button" class="btn btn-primary" v-on:click="save">
+                    <i class="fas fa-save"></i> Tallenna
+                </button>
+                <button v-if="!isNew" type="button" class="btn btn-danger" v-on:click="remove">
+                    <i class="fas fa-trash-alt"></i> Poista
+                </button>
+                <button type="button" class="btn btn-secondary" v-on:click="cancel">
+                    <i class="fas fa-undo"></i> Palaa
+                </button>
+            </div>
+        </form>
+    </div>
+</template>
+<script>
+    const editTrophy = {
+        template: "#trophy-editor",
+        data() {
+            return {
+                isNew: false,
+                trophy: new Trophy(),
+                players: [],
+                league: new League(),
+                validationResult: new ValidationResult()
+            }
+        },
+        created() {
+            this.organizationId = this.$route.params.organizationId;
+            this.leagueId = this.$route.params.leagueId;
+            this.seasonId = this.$route.params.seasonId;
+
+            if (this.$route.params.trophyId !== undefined) {
+                trophyService.loadTrophy(this.$route.params.trophyId).then(trophy => {
+                    this.trophy = trophy;
+                });
+            } else {
+                this.isNew = true;
+            }
+
+            leagueService.loadLeague(this.leagueId).then(league => {
+                this.league = league;
+                return playerService.loadAllPlayersInOrganization(this.$route.params.organizationId);
+            }).then(players => {
+                this.season = this.league.getSeasonWithId(this.seasonId);
+                this.players = players.filter(player => this.season.hasPlayerId(player.id));
+                this.playerStore = new PlayerStore(players);
+            });
+        },
+        computed: {
+            trophyTitle() {
+                if (this.trophy.name === undefined || this.trophy.name === "") {
+                    return "Palkinnon tiedot";
+                }
+                return this.trophy.name;
+            }
+        },
+        methods: {
+            save() {
+
+                trophyService.validateTrophy(this.trophy).then(validationResult => {
+
+                    this.validationResult = validationResult;
+
+                    if (validationResult.ok) {
+                        this.trophy.organizationId = this.organizationId;
+                        this.trophy.leagueId = this.leagueId;
+                        this.trophy.seasonId = this.seasonId;
+
+                        trophyService.saveTrophy(this.trophy).then(trophy => {
+                            logService.saveLog(new Log({
+                                type: LogTypes.REPORT,
+                                text: `${this.league.name} / ${this.season.name}: Pelaajalle ${this.playerStore.getPlayerLabelWithId(trophy.playerId)} on myönnetty palkinto ${trophy.name}`,
+                                organizationId: this.organizationId,
+                                trophyId: trophy.id,
+                                seasonId: this.seasonId,
+                                leagueId: this.leagueId
+                            }));
+                            this.$router.back();
+                            //messagesDialog.showMessage("Tallennus onnistui", `Palkinnon ${trophy.name} tietojen tallennus onnistui.`);
+                        }).catch(error => {
+                            messagesDialog.showError("Tallennus epäonnistui", `Palkinnon tietojen tallennus epäonnistui.`, error);
+                        });
+                    }
+                }).catch(error => {
+                    messagesDialog.showError("Validointi epäonnistui", `Palkinnon tietojen tarkistus epäonnistui teknisen virheen takia.`, error);
+                });
+
+            },
+            cancel() {
+                this.$router.back();
+            },
+            remove() {
+                trophyService.deleteTrophy(this.trophy).then(deletedTrophy => {
+                    this.$router.back();
+                    //messagesDialog.showMessage("Poisto onnistui", `Palkinnon ${deletedTrophy.name} tietojen poisto onnistui.`);
+                }).catch(error => {
+                    messagesDialog.showError("Poisto epäonnistui", `Palkinnon ${this.trophy.name} tietojen poisto epäonnistui.`, error);
+                });
+            }
+        }
+    };
+</script>

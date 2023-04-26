@@ -1,0 +1,67 @@
+doctype html
+html(lang="fi")
+
+  head
+    title UPI
+    meta(charset="utf-8")
+    meta(name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no")
+    meta(name="apple-mobile-web-app-capable" content="yes")
+    meta(name="apple-web-app-capable" content="yes")
+    meta(name="HandheldFriendly" content="yes")
+    meta(http-equiv="Content-Type" content="text/html; charset=UTF-8")
+    link(rel="icon" type="image/png" href="favicon.png")
+    link(rel="stylesheet" href="/css/bootstrap.min.css")
+    link(rel="stylesheet" href="https://use.fontawesome.com/releases/v5.1.0/css/all.css" integrity="sha384-lKuwvrZot6UHsBSfcMvOkWwlCMgc0TaWr+30HWe3a4ltaBwTZhyTEggF5tJv8tbt" crossorigin="anonymous")
+    link(rel="stylesheet" href="/css/styles.css")
+    // development version, includes helpful console warnings 
+    script(src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js")
+    // VUE Router
+    // script(src="https://unpkg.com/vue-router/dist/vue-router.js")
+    script(src="/js/vendor/vue-router-3.0.1.js")
+    // Date Picker: https://github.com/charliekassel/vuejs-datepicker 
+    script(src="/js/vendor/vuejs-datepicker.min.js")
+    // https://rigor789.github.io/vue-scrollto/#/docs 
+    script(src="https://cdn.jsdelivr.net/npm/vue-scrollto")
+    // production version, optimized for size and speed 
+    // script src="https://cdn.jsdelivr.net/npm/vue" 
+    script(src="/js/vendor/vue-resource-1.5.1.js")
+  body 
+
+    include app/app.html
+    include pages/organizations.html
+    include pages/organization.html
+    include pages/league.html
+    include pages/league-editor.html
+    include pages/season.html
+    include pages/season-editor.html
+    include pages/division-editor.html
+    include pages/round-editor.html
+    include pages/player.html
+    include pages/player-editor.html
+    include pages/game.html
+    include pages/trophy-editor.html
+
+    include components/page-header.html
+    include components/header-icon.html
+    include components/trophies-table.html
+    include components/messages-dialog.html
+    include components/confirm-dialog.html
+    include components/login-dialog.html
+    include components/score-picker.html
+    include components/upi-date-picker.html
+    include components/login-icon.html
+
+    script
+      include scripts/common.js
+      include scripts/organization.js
+      include scripts/league.js
+      include scripts/player.js
+      include scripts/game.js
+      include scripts/trophy.js
+      include scripts/log.js
+      include scripts/user.js
+
+    // 2.22.2 
+    script(src="/js/vendor/moment.js")
+    script(src="/js/common.js")
+    script(src="/js/main.js")    

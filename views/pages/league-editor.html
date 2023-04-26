@@ -1,0 +1,89 @@
+<template id="league-editor">
+    <div class="container-fluid">
+        <page-header icon="league" :title="leagueTitle"></page-header>
+        <form id="league-form">
+            <div class="form-group">
+                <label for="league-name">Liigan / turnauksen nimi</label>
+                <input id="league-name" type="text" v-model="league.name" class="form-control" placeholder="Syötä liigan tai turnauksen nimi">
+            </div>
+            <div class="upi-buttons">
+                <button type="button" class="btn btn-primary" v-on:click="save">
+                    <i class="fas fa-save"></i> Tallenna
+                </button>
+                <button v-if="!isNew" type="button" class="btn btn-danger" v-on:click="remove">
+                    <i class="fas fa-trash-alt"></i> Poista
+                </button>
+                <button type="button" class="btn btn-secondary" v-on:click="cancel">
+                    <i class="fas fa-undo"></i> Palaa
+                </button>
+            </div>
+        </form>
+    </div>
+</template>
+<script>
+    const leagueEditor = {
+        template: "#league-editor",
+        data() {
+            return {
+                isNew: false,
+                league: new League(),
+                validationResult: new ValidationResult()
+            }
+        },
+        created() {
+            this.organizationId = this.$route.params.organizationId;
+            this.leagueId = this.$route.params.leagueId;
+
+            if (this.$route.params.leagueId !== undefined) {
+                leagueService.loadLeague(this.$route.params.leagueId).then(league => {
+                    this.league = league;
+                });
+            } else {
+                this.isNew = true;
+            }
+        },
+        computed: {
+            leagueTitle() {
+                if (this.league.name === undefined || this.league.name === "") {
+                    return "Liigan / turnauksen tiedot";
+                }
+                return this.league.name;
+            }
+        },
+        methods: {
+            save() {
+
+                leagueService.validateLeague(this.league).then(validationResult => {
+
+                    this.validationResult = validationResult;
+
+                    if (validationResult.ok) {
+                        this.league.organizationId = this.organizationId;
+                        this.league.leagueId = this.leagueId;
+
+                        leagueService.saveLeague(this.league).then(league => {
+                            this.$router.push({ name: "view-league", params: { leagueId: league.id, organizationId: this.organization.id } });
+                        }).catch(error => {
+                            messagesDialog.showError("Tallennus epäonnistui", `Liigan/turnauksen tietojen tallennus epäonnistui.`, error);
+                        });
+                    }
+                }).catch(error => {
+                    messagesDialog.showError("Validointi epäonnistui", `Liigan/turnauksen tietojen tarkistus epäonnistui teknisen virheen takia.`, error);
+                });
+            },
+            cancel() {
+                this.$router.back();
+            },
+            remove() {
+                alert('Poistoa ei ole vielä toteutettu');
+                /*
+                leagueService.deleteLeague(this.league).then(deletedleague => {
+                    
+                    this.$router.back();
+                }).catch(error => {
+                    messagesDialog.showError("Poisto epäonnistui", `Liigan/turnauksen ${this.league.name} tietojen poisto epäonnistui.`, error);
+                });*/
+            }
+        }
+    };
+</script>

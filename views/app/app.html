@@ -1,0 +1,43 @@
+<script>
+    window.onerror = function (message, source, lineno, colno, error) {
+        let errorDetails = `Virhe: "${message}" Tiedosto: ${source} Rivinumero: ${lineno} Sarake: ${colno}`;
+        console.error(errorDetails);
+        if (messagesDialog !== undefined) {
+            messagesDialog.showError("Onneksi olkoon! Löysit bugin sovelluksesta!", "Olisitko ystävällinen, ja informoisit ylläpitäjää siitä mitä teit, jotta virhe saadaan korjattua. Virheen tarkemmat tiedot: " + errorDetails);
+        }
+    };
+    var app;
+</script>
+<div id="app">
+    <nav id="app-header">
+        <div style="display:flex">
+            <a v-on:click.prevent="goBack()" title="Palaa takaisin">
+                <i class="fas fa-arrow-left"></i>
+            </a>
+            <a v-on:click.prevent="goHome()" title="Palaa organisaation kotisivulle">
+                <i class="fas fa-home"></i>
+            </a>
+            <a title="Avaa Twitter" target="_blank" href="https://twitter.com/UPI26265574">
+                <i class="fab fa-twitter"></i>
+            </a>
+            <a title="Vesan ohjeet" target="_blank" href="https://bit.ly/2M0Po32">
+                <i class="fas fa-medkit"></i>
+            </a>            
+            <span v-show="loading">
+                <i class="fas fa-sync fa-spin"></i>
+            </span>            
+        </div>
+        <login-icon></login-icon>
+    </nav>
+    <main id="app-main">
+        <!--[if lte IE 11]>
+            <p class="browserupgrade">Käytössäsi on <strong>vanhentunut</strong> selain. Ole hyvä, ja <a href="https://browsehappy.com/">päivitä selaimesi</a></p>. Kiitos!
+        <![endif]-->
+        <transition name="slide">
+            <router-view :key="$route.fullPath"></router-view>
+        </transition>
+    </main>
+</div>
+<div id="message-dialog"></div>
+<div id="confirm-dialog"></div>
+<div id="login-dialog"></div>

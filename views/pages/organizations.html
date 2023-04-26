@@ -1,0 +1,47 @@
+<template id="organizations">
+    <div class="container-fluid">        
+        <h1>UPI</h1>
+        <div class="upi-tagline">
+            <i>Uskomattomiin Pelisuorituksiin Innostaja</i>
+        </div>
+        <br/>
+        <h3>Valitse organisaatio</h3>
+        <table class="table">
+            <tbody>
+                <tr v-for="organization in organizations" class="upi-clickable" v-on:click="open(organization)">
+                    <th>
+                        {{organization.name}}
+                    </th>
+                    <th class="upi-table-link-icon-cell">
+                        <i class="fas fa-chevron-right"></i>
+                    </th>
+                </tr>
+            </tbody>
+        </table>      
+    </div>
+</template>
+<script>
+    const organizationsDashboard = {
+        template: "#organizations",
+        data: function () {
+            return {
+                organizations: organizationCache.organizations
+            }
+        },
+        created: function () {
+            if (this.organizations.length > 0) {
+                return;
+            }
+            organizationService.loadOrganizations().then(organizations => {
+                this.organizations = organizations;
+            }).catch(error => {
+                messagesDialog.showError("Lataus epäonnistui", `Organisaatioiden tietojen haku epäonnistui.`, error);
+            });
+        },
+        methods: {
+            open: function (organization) {
+                this.$router.push({ name: "organization", params: { organizationId: organization.id } });
+            }
+        }
+    };   
+</script>

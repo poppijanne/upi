@@ -1,0 +1,61 @@
+<template id="upi-date-picker-template">
+    <vuejs-datepicker v-model="date" :format="format" :monday-first="true" :language="fi" placeholder="pp.kk.vvvv"
+        :typeable="false" :bootstrap-styling="true"></vuejs-datepicker>
+</template>
+<style>
+    .vdp-datepicker {
+        display: inline-block;
+    }
+
+    .vdp-datepicker input {
+        width: 7em;
+    }
+</style>
+<script>
+    const DATEPICKER_FI = {
+        language: "fi",
+        months: ['tammikuu', 'helmikuu', 'maaliskuu', 'huhtikuu', 'toukokuu', 'kesäkuu', 'heinäkuu', 'elokuu', 'syyskuu', 'lokakuu', 'marraskuu', 'joulukuu'],
+        monthsAbbr: ['tammi', 'helmi', 'maalis', 'huhti', 'touko', 'kesä', 'heinä', 'elo', 'syys', 'loka', 'marras', 'joulu'],
+        days: ['su', 'ma', 'ti', 'ke', 'to', 'pe', 'la'],
+        rtl: false,
+        ymd: false,
+        yearSuffix: ''
+    }
+
+    Vue.component('upi-date-picker', {
+        template: "#upi-date-picker-template",
+        props: {
+            value: Date
+        },
+        data: function () {
+            return {
+                date: new Date(),
+                fi: DATEPICKER_FI
+            }
+        },
+        created: function () {
+            if (this.value !== undefined) {
+                this.date = new Date(this.value.getTime());
+            }
+            else {
+                this.date = undefined;
+            }
+        },
+        methods: {
+            format: function (date) {
+                return moment(date).format('DD.MM.YYYY');
+            }
+        },
+        watch: {
+            value: function (value) {
+                this.date = value;
+            },
+            date: function (value) {
+                this.$emit('input', this.date);
+            }
+        },
+        components: {
+            vuejsDatepicker: vuejsDatepicker
+        }
+    });
+</script>

@@ -1,0 +1,42 @@
+{
+  "name": "upi-web",
+  "version": "1.0.0",
+  "description": "Table ice hockey game manager",
+  "main": "index.js",
+  "scripts": {
+    "start": "node --max_old_space_size=64 --optimize_for_size --gc_interval=100 index.js",
+    "pretest": "./node_modules/.bin/eslint *.js",
+    "test": "node tests/tests.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://git.eu-gb.bluemix.net/poppijanne/upi-web.git"
+  },
+  "author": "Janne Kivilahti",
+  "license": "ISC",
+  "engines": {
+    "node": "8.6.0"
+  },
+  "dependencies": {
+    "@cloudant/cloudant": "^2.3.0",
+    "body-parser": "^1.18.3",
+    "compression": "^1.7.3",
+    "cookie-parser": "^1.4.3",
+    "cors": "^2.8.4",
+    "dotenv": "^6.0.0",
+    "express": "^4.16.3",
+    "moment": "^2.22.2",
+    "path": "^0.12.7",
+    "pug": "^2.0.3",
+    "request": "^2.88.0",
+    "twitter": "^1.7.1"
+  },
+  "devDependencies": {
+    "eslint": "^5.1.0",
+    "eslint-config-standard": "^11.0.0",
+    "eslint-plugin-import": "^2.13.0",
+    "eslint-plugin-node": "^6.0.1",
+    "eslint-plugin-promise": "^3.8.0",
+    "eslint-plugin-standard": "^3.1.0"
+  }
+}

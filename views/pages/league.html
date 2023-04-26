@@ -1,0 +1,62 @@
+<template id="league-dashboard">
+    <div class="container-fluid">
+        <h1>{{league.name}}</h1>
+        <h2 v-show="league.seasons.length">Valitse kausi</h2>
+        <table class="table">
+            <tbody>
+                <tr v-for="season in league.seasons" v-on:click="viewSeason(season)" class="upi-clickable">
+                    <td>{{season.name}}</td>
+                    <td class="upi-table-link-icon-cell">
+                        <i class="fas fa-chevron-right"></i>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        <button type="button" class="btn btn-primary upi-button" v-on:click="addNewSeason">
+            <i class="fas fa-plus"></i> Lisää uusi kausi
+        </button>
+    </div>
+</template>
+<script>
+    const leagueDashboard = {
+        template: "#league-dashboard",
+        data() {
+            return {
+                league: new League()
+            }
+        },
+        created() {
+            this.organizationId = this.$route.params.organizationId;
+            if (this.$route.params.leagueId !== undefined) {
+                leagueService.loadLeague(this.$route.params.leagueId).then(league => {
+                    this.league = league;
+                }).catch(error => {
+                    messagesDialog.showError("Lataus epäonnistui", `Liigan tietojen haku epäonnistui.`, error);
+                });
+            } else {
+                league.organizationId = this.organizationId;
+            }
+        },
+        methods: {
+            addNewSeason() {
+                this.$router.push({
+                    name: "new-season",
+                    params: {
+                        organizationId: this.organizationId,
+                        leagueId: this.league.id
+                    }
+                });
+            },
+            viewSeason(season) {
+                this.$router.push({
+                    name: "view-season",
+                    params: {
+                        organizationId: this.organizationId,
+                        leagueId: this.league.id,
+                        seasonId: season.id
+                    }
+                });
+            }
+        }
+    };   
+</script>

@@ -1,0 +1,532 @@
+<style>
+    .upi-round-editor-division-selection {
+        margin-bottom: 12px;
+    }
+    .upi-round-editor-division-title {
+        border-bottom: 1px solid #DDD;
+        color: #495057;
+        padding: 8px;
+    }
+    .upi-round-editor-division-players {
+        padding: 8px;
+    }
+</style>
+<template id="edit-round">
+    <div class="container-fluid">
+        <h1 v-if="!isNew">{{round.name}}</h1>
+        <h1 v-if="isNew">Uuden sarjan tiedot</h1>
+        <form>
+            <div class="form-group">
+                <label for="edit-round-name">Nimi</label>
+                <input id="edit-round-name" type="text" v-model="round.name" class="form-control" placeholder="Syötä sarjan nimi"
+                    required>
+            </div>
+            <div class="form-group">
+                <label for="edit-round-order">Järjestys</label>
+                <input id="edit-round-order" type="number" min="1" v-model.number="order" class="form-control"
+                    placeholder="Kierroksen järjestys numerona">
+                <small class="form-text text-muted">1 on ensimmäinen kierros, 2 sitä seuraava jne.</small>
+            </div>
+            <div class="form-group">
+                <label>Deadline</label>
+                <div>
+                    <upi-date-picker v-model="deadline"></upi-date-picker>
+                </div>
+                <small class="form-text text-muted">Päivämäärä, johon mennessä kierros on oltava pelattuna</small>
+            </div>
+            <div class="form-group">
+                    <label>Tulokset näkyvät sarjataulukossa</label>
+                    <div>
+                        <upi-date-picker v-model="showResultsDate"></upi-date-picker>
+                    </div>
+                    <small class="form-text text-muted">Päivämäärä, jolloin tulokset alkavat näkyä sarjataulukossa</small>
+                </div>            
+        </form>
+        <hr />
+        <h2>Pelien generointi</h2>
+        <!--
+        <form>
+            <template v-for="division in divisions">
+                <div class="form-check">
+                    <label class="form-check-label">
+                        <input class="form-check-input" type="checkbox" v-model="division.checked"> {{division.name}}
+                    </label>
+                </div>
+            </template>
+            <small class="form-text text-muted">Valitse vähintään yksi lohko, jos generoit useita pelejä</small>
+        </form>
+        <br/>
+        <button class="btn btn-primary upi-button" v-on:click="allVersusAll">
+            <i class="fas fa-users"></i> Kaikki kaikkia vastaan
+        </button>
+        -->
+        <br />
+        <table class="table" style="border: 1px solid rgb(226, 226, 226)">
+            <thead class="thead-light">
+                <tr>
+                    <th colspan="2">Kaikki kaikkia vastaan</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr v-for="division in divisions">
+                    <td>
+                        <div class="form-check">
+                            <label class="form-check-label">
+                                <input class="form-check-input" type="checkbox" v-model="division.checked">
+                                {{division.name}}
+                            </label>
+                        </div>
+                    </td>
+                    <td>
+                        {{division.playerIds.length}} pelaajaa
+                    </td>
+                </tr>
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="2">
+                        <div>
+                            <label class="form-check-label">
+                                <input type="checkbox" v-model="noDuplicatesInAllVersusAll">
+                                Estä saman pelin generointi moneen kertaan
+                            </label>
+                        </div>
+                        <br />
+                        <button class="btn btn-primary upi-button" v-on:click="allVersusAll">
+                            <i class="fas fa-users"></i> Luo pelit
+                        </button>
+                    </td>
+                </tr>
+            </tfoot>
+        </table>
+        <br />
+        <table class="table" style="border: 1px solid rgb(226, 226, 226)">
+            <thead class="thead-light">
+                <tr>
+                    <th colspan="2">Yksi kaikkia vastaan</th>
+                </tr>
+                <tr>
+                    <th>Valitse yksi pelaaja</th>
+                    <th>Valitse yksi tai useampi vastustaja</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td style="width:50%;border-right: 1px solid #DDD;">
+                        <div v-for="division in season.divisions" :key="division.id" class="upi-round-editor-division-selection">
+                            <div class="upi-round-editor-division-title">{{division.name}}</div>
+                            <div class="upi-round-editor-division-players">
+                                <span v-for="(player,index) in checkedPlayers" :key="player.id">
+                                    <div class="form-check" v-if="player.division.id === division.id">
+                                        <label class="form-check-label">
+                                            <input class="form-check-input" type="radio" :value="player.id" v-model="chosenPlayerId">
+                                            {{player.label}}
+                                        </label>
+                                    </div>
+                                </span>
+                            </div>
+                        </div>
+                    </td>
+                    <td style="width:50%">
+                        <div v-for="division in season.divisions" :key="division.id" class="upi-round-editor-division-selection">
+                            <div class="upi-round-editor-division-title">{{division.name}}</div>
+                            <div class="upi-round-editor-division-players">
+                                <span v-for="(player,index) in checkedPlayers" :key="player.id">
+                                    <div class="form-check" v-if="player.division.id === division.id">
+                                        <label v-show="player.id !== chosenPlayerId" class="form-check-label">
+                                            <input class="form-check-input" type="checkbox" v-model="player.checked">
+                                            {{player.label}}
+                                        </label>
+                                    </div>
+                                </span>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="2">
+                        <button class="btn btn-primary upi-button" v-on:click="oneVersusAll">
+                            <i class="fas fa-users"></i> Luo pelit
+                        </button>
+                    </td>
+                </tr>
+            </tfoot>
+        </table>
+        <br />
+        <template v-if="games.length">
+            <hr />
+            <h2>Pelit ({{games.length}})</h2>
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead class="thead-light">
+                        <tr>
+                            <th>Pelattu</th>
+                            <th colspan="2" style="text-align: center">Pelaajat</th>
+                            <th colspan="2" style="text-align: center">Maalit</th>
+                            <th>Jatk.</th>
+                            <th>Ei sarjataul.</th>
+                            <th></th>
+                        </tr>
+                        <tr>
+                            <th></th>
+                            <th colspan="2" style="text-align: center">
+                                <select v-model="filteredPlayerId" class="form-control form-control-sm">
+                                    <option value="">Näytä kaikki</option>
+                                    <option :value="player.id" v-for="player in players" :key="player.id">
+                                        {{player.label}}
+                                    </option>
+                                </select>
+                            </th>
+                            <th colspan="5"></th>
+                        </tr>
+                    </thead>
+                    <!-- create component -->
+                    <tbody v-for="game in games" :key="game.id">
+
+                        <tr v-if="filteredPlayerId === '' || game.hasPlayerId(filteredPlayerId)">
+                            <td class="upi-table-check-icon-cell">
+                                <input type="checkbox" v-model="game.isPlayed" class="form-control" />
+                            </td>
+                            <td>
+                                <select v-model="game.player1Id" class="form-control form-control-sm">
+                                    <option disabled value="">Valitse</option>
+                                    <option :value="player._id" v-for="player in players" :key="player.id">
+                                        {{player.label}}
+                                    </option>
+                                </select>
+                            </td>
+                            <td>
+                                <select v-model="game.player2Id" class="form-control form-control-sm">
+                                    <option disabled value="">Valitse</option>
+                                    <option :value="player._id" v-for="player in players" :key="player.id">
+                                        {{player.label}}
+                                    </option>
+                                </select>
+                            </td>
+                            <td style="text-align: center">
+                                <input type="number" v-model.number="game.player1Goals" class="form-control form-control-sm upi-input-goal-input"
+                                    :disabled="!game.isPlayed" />
+                            </td>
+                            <td style="text-align: center">
+                                <input type="number" v-model.number="game.player2Goals" class="form-control form-control-sm upi-input-goal-input"
+                                    :disabled="!game.isPlayed" />
+                            </td>
+                            <td class="upi-table-check-icon-cell">
+                                <input type="checkbox" v-model="game.overtime" class="form-control" :disabled="!game.isPlayed" />
+                            </td>
+                            <td class="upi-table-check-icon-cell">
+                                <input type="checkbox" v-model="game.offScoreboard" class="form-control" />
+                            </td>                            
+                            <td style="text-align: right">
+                                <button type="button" class="btn btn-sm btn-danger" title="Poista peli" v-on:click="removeGame(game)">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+        </template>
+        <br />
+        <button class="btn btn-primary upi-button" v-on:click="addGame">
+            <i class="fas fa-user-friends"></i> Lisää yksittäinen peli
+        </button>
+        <button class="btn btn-danger upi-button" v-on:click="removeGames">
+            <i class="fas fa-trash-alt"></i> Poista kaikki pelit
+        </button>
+        <div class="upi-buttons">
+            <button type="button" class="btn btn-primary" v-on:click="save">
+                <i class="fas fa-save"></i> Tallenna sarja
+            </button>
+            <button v-if="!isNew" type="button" class="btn btn-danger" v-on:click="remove">
+                <i class="fas fa-trash-alt"></i> Poista sarja
+            </button>
+            <button type="button" class="btn btn-secondary" v-on:click="cancel">
+                <i class="fas fa-undo"></i> Peruuta
+            </button>
+        </div>
+        <br />
+    </div>
+</template>
+<script>
+    const editRound = {
+        template: "#edit-round",
+        data: function () {
+            return {
+                league: {},
+                season: {},
+                players: [],
+                filteredPlayerId: "",
+                chosenPlayerId: "",
+                checkedPlayers: [],
+                noDuplicatesInAllVersusAll: false,
+                round: {},
+                divisions: [],
+                order: 0,
+                deadline: new Date(),
+                showResultsDate: new Date(),
+                originalGames: [],
+                games: [],
+                isNew: false
+            }
+        },
+        created: function () {
+            this.organizationId = this.$route.params.organizationId;
+            this.playerStore = new PlayerStore(playerCache.players);
+            this.gameStore = new GameStore(gameCache.games);
+            this.players = playerCache.players;
+            this.league = leagueCache.getWithId(this.$route.params.leagueId);
+            if (!this.league.notFound) {
+                this.season = this.league.getSeasonWithId(this.$route.params.seasonId);
+                if (this.season !== undefined) {
+                    this.divisions = this.season.divisions.map(division => {
+                        let checkableDivision = new Division(division);
+                        checkableDivision.checked = false;
+                        return checkableDivision;
+                    });
+                    if (this.$route.params.roundId !== undefined) {
+                        this.round = this.season.getRoundWithId(this.$route.params.roundId);
+                        this.order = this.round.order;
+                        this.deadline = this.round.deadlineAsDate;
+                        this.showResultsDate = this.round.showResultsDateAsDate;
+                        this.games = gameCache.getGamesOfRound(this.round.id);
+                        this.originalGames = [...this.games];
+                    } else {
+                        this.isNew = true;
+                        this.round = new Round();
+                    }
+                    this.games = this.games.sort((game1, game2) => {
+                        let player1 = this.playerStore.getWithId(game1.player1Id);
+                        let player2 = this.playerStore.getWithId(game2.player1Id);
+                        let label1 = player1 === undefined || player1.label === undefined ? "zzzzz" : player1.label;
+                        let label2 = player2 === undefined || player2.label === undefined ? "zzzzz" : player2.label;
+                        return label1.localeCompare(label2);
+                    });
+                }
+            }
+
+            playerService.loadAllPlayersInOrganization(this.organizationId).then(players => {
+                this.playerStore.addAll(players);
+                leagueService.loadLeague(this.$route.params.leagueId).then(league => {
+                    gameService.loadGamesInSeason(this.$route.params.seasonId).then(games => {
+                        this.gameStore.addAll(games);
+
+                        this.league = league;
+                        this.season = this.league.getSeasonWithId(this.$route.params.seasonId);
+                        this.players = players.filter(player => this.season.hasPlayerId(player.id));
+                        this.checkedPlayers = this.players.map(player => {
+                            let checkablePlayer = new Player(player);
+                            checkablePlayer.checked = false;
+                            checkablePlayer.division = this.season.getPlayersDivision(checkablePlayer.id);
+                            return checkablePlayer;
+                        });
+
+                        this.divisions = this.season.divisions.map(division => {
+                            let checkableDivision = new Division(division);
+                            checkableDivision.checked = false;
+                            return checkableDivision;
+                        });
+                        if (this.$route.params.roundId !== undefined) {
+                            this.round = this.season.getRoundWithId(this.$route.params.roundId);
+                            this.order = this.round.order;
+                            this.deadline = this.round.deadlineAsDate;
+                            this.showResultsDate = this.round.showResultsDateAsDate;
+                            this.games = this.gameStore.getGamesOfRound(this.round.id);
+                            this.originalGames = [...this.games];
+                        } else {
+                            this.isNew = true;
+                            this.round = new Round();
+                        }
+                        this.games = this.games.sort((game1, game2) => {
+                            let player1 = this.playerStore.getWithId(game1.player1Id);
+                            let player2 = this.playerStore.getWithId(game2.player1Id);
+                            let label1 = player1 === undefined || player1.label === undefined ? "zzzzz" : player1.label;
+                            let label2 = player2 === undefined || player2.label === undefined ? "zzzzz" : player2.label;
+                            return label1.localeCompare(label2);
+                        });
+                    });
+                });
+            });
+        },
+        methods: {
+            gamesInRound() {
+                let games = this.gameStore.getGamesOfRound(this.round.id);
+                return games;
+            },
+            playerLabel(playerId) {
+                return this.playerStore.getWithId(playerId).label;
+            },
+            save: function () {
+
+                this.round.order = this.order;
+                this.round.deadlineAsDate = this.deadline;
+                this.round.showResultsDateAsDate = this.showResultsDate;
+
+                let gamesToUpdate = this.games;
+                let deletedGames = [];
+
+                if (this.isNew) {
+                    this.season.rounds.push(this.round);
+                } else {
+                    // find out what games were removed
+                    deletedGames = this.originalGames.filter(originalGame => {
+                        return this.games.find(game => game.id === originalGame.id) === undefined;
+                    });
+                    deletedGames.forEach(game => game.deleted = true);
+                    gamesToUpdate = [...gamesToUpdate, ...deletedGames];
+                }
+
+                leagueService.saveLeague(this.league).then(league => {
+                    gameService.saveGames(gamesToUpdate).then(games => {
+                        this.gameStore.addAll(this.games);
+                        this.gameStore.removeAll(deletedGames);
+                        this.$router.back();
+                        //messagesDialog.showMessage("Tallennus onnistui", `Lohkon ${this.round.name} tietojen tallennus onnistui.`);
+                    }).catch(error => {
+                        messagesDialog.showError("Tallennus epäonnistui", `Lohkon ${this.round.name} tietojen tallennus epäonnistui.`, error);
+                    });
+                });
+            },
+            cancel: function () {
+                this.$router.back();
+            },
+            remove: function () {
+                // TODO: remove games
+
+                this.season.removeRound(this.round);
+                leagueService.saveLeague(this.league).then(league => {
+                    this.$router.back();
+                    messagesDialog.showMessage("Tallennus onnistui", `Lohkon ${this.round.name} tietojen poisto onnistui.`);
+                }).catch(error => {
+                    messagesDialog.showError("Tallennus epäonnistui", `Lohkon ${this.round.name} tietojen poisto epäonnistui.`, error);
+                });
+            },
+            allVersusAll: function () {
+                let games = [];
+
+                if (this.noDuplicatesInAllVersusAll) {
+                    games = [...this.games];
+                }
+
+                let playerIds = [];
+
+                this.divisions.forEach(division => {
+                    if (division.checked) {
+                        playerIds = [...playerIds, ...division.playerIds];
+                    }
+                });
+
+                if (playerIds.length === 0) {
+                    messagesDialog.showMessage("Pelien generointi", "Valitse vähintään yksi lohko, jonka pelaajat pelaavat toisiaan vastaan.")
+                    return;
+                }
+
+                let gameCounter = 0;
+
+                playerIds.forEach(player1Id => playerIds.forEach(player2Id => {
+                    if (player1Id !== player2Id) {
+                        // don't add the same game twice
+                        if (games.find(game => game.hasPlayerId(player1Id) && game.hasPlayerId(player2Id)) !== undefined) { }
+                        else {
+                            let game = new Game({
+                                leagueId: this.league.id,
+                                seasonId: this.season.id,
+                                roundId: this.round.id,
+                                player1Id: player1Id,
+                                player2Id: player2Id,
+                                player1Goals: 0,
+                                player2Goals: 0,
+                                overtime: false,
+                                isPlayed: false,
+                                location: "",
+                                comments: ""
+                            });
+                            games.push(game);
+                            gameCounter++;
+                        }
+                    }
+                }));
+
+                alert(`Lisättiin ${gameCounter} peliä`);
+
+                if (this.noDuplicatesInAllVersusAll) {
+                    games = [...games];
+                }
+                else {
+                    games = [...this.games, ...games];
+                }
+
+                games = games.sort((game1, game2) => {
+                    let player1 = this.playerStore.getWithId(game1.player1Id);
+                    let player2 = this.playerStore.getWithId(game2.player1Id);
+                    let label1 = player1 === undefined || player1.label === undefined ? "zzzzz" : player1.label;
+                    let label2 = player2 === undefined || player2.label === undefined ? "zzzzz" : player2.label;
+                    return label1.localeCompare(label2);
+                });
+                this.games = games;
+            },
+            oneVersusAll: function () {
+                let games = [...this.games];
+
+                let players = this.checkedPlayers.filter(player => player.checked);
+
+                if (players.length === 0) {
+                    messagesDialog.showMessage("Pelien generointi", "Valitse vähintään yksi vastustaja.")
+                    return;
+                }
+
+                players.forEach(player => {
+                    if (player.id !== this.chosenPlayerId) {
+                        let game = new Game({
+                            leagueId: this.league.id,
+                            seasonId: this.season.id,
+                            roundId: this.round.id,
+                            player1Id: this.chosenPlayerId,
+                            player2Id: player.id,
+                            player1Goals: 0,
+                            player2Goals: 0,
+                            overtime: false,
+                            isPlayed: false,
+                            location: "",
+                            comments: ""
+                        });
+                        games.push(game);
+                    }
+                });
+
+                games = games.sort((game1, game2) => {
+                    let player1 = this.playerStore.getWithId(game1.player1Id);
+                    let player2 = this.playerStore.getWithId(game2.player1Id);
+                    let label1 = player1 === undefined || player1.label === undefined ? "zzzzz" : player1.label;
+                    let label2 = player2 === undefined || player2.label === undefined ? "zzzzz" : player2.label;
+                    return label1.localeCompare(label2);
+                });
+                this.games = games;
+            },
+            removeGames: function () {
+                this.games = [];
+            },
+            removeGame: function (gameToRemove) {
+                this.games = this.games.filter(game => game.id !== gameToRemove.id);
+            },
+            addGame: function () {
+                this.games.push(new Game({
+                    leagueId: this.league.id,
+                    seasonId: this.season.id,
+                    roundId: this.round.id,
+                    player1Id: undefined,
+                    player2Id: undefined,
+                    player1Goals: 0,
+                    player2Goals: 0,
+                    overtime: false,
+                    isPlayed: false,
+                    location: "",
+                    comments: ""
+                }));
+            }
+        }
+    }
+</script>

@@ -1,0 +1,59 @@
+<template id="messages-dialog-template">
+    <div class="modal" tabindex="-1" role="dialog" :style="{display: display}">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i :class="['fas', icon]"></i> {{title}}</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close" v-on:click="close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p>{{message}}</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" v-on:click="close">Sulje</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+<script>
+    const messagesDialog = new Vue({
+        el: '#message-dialog',
+        template: "#messages-dialog-template",
+        data: {
+            display: "none",
+            title: "Otsikko",
+            message: "Teksti",
+            icon: "fa-info-circle"
+        },
+        methods: {
+            showMessage(title, message, icon = "info-circle") {
+                this.title = title;
+                this.message = message;
+                this.icon = "fa-" + icon;
+                this.display = "inline";
+            },
+            showWarning(title, message, icon = "exclamation-triangle") {
+                this.title = title;
+                this.message = message;
+                this.icon = "fa-" + icon;
+                this.display = "inline";
+            },
+            showError(title, message, error, icon = "exclamation-circle") {
+                this.title = title;
+                this.icon = "fa-" + icon;
+                this.display = "inline";
+                this.message = message;
+                if (error !== undefined) {
+                    this.message += ` ${error.explanation}`;
+                }
+            },
+            close() {
+                this.display = "none";
+            }
+        }
+    }).$mount('#app');
+</script>

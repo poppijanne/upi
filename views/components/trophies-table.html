@@ -1,0 +1,89 @@
+<template id="trophies-table-template">
+    <div v-if="trophies.length">
+        <h2>Palkinnot</h2>
+        <table class="table table-sm">
+            <tbody>
+                <tr v-for="trophy in trophies" class="upi-table-trophy-row">
+                    <td style="width: 50px; text-align: center;font-size: 1.5em">
+                        <span v-if="trophy.type === 'TROPHY'">&#x1F3C6</span>
+                        <span v-if="trophy.type === 'AWARD'">&#x1F3C5</span>
+                        <!--
+                        <i v-if="trophy.type === 'TROPHY'" class="fas fa-trophy"></i>
+                        <i v-if="trophy.type === 'AWARD'" class="fas fa-award"></i>
+                        &#x1F3C6
+                        -->
+                    </td>
+                    <td>
+                        {{trophy.name}}
+                    </td>
+                    <td>
+                        <span v-if="players.length">{{getPlayerLabel(trophy.playerId)}}</span> 
+                    </td>
+                    <td>
+                        <span v-if="trophy.leagueId === undefined">{{trophy.year}}</span>
+                    </td>
+                    <td>
+                        <span v-if="leagues.length && trophy.leagueId !== undefined">
+                            {{getLeagueLabel(trophy.leagueId)}} / {{getSeasonLabel(trophy.seasonId)}}
+                        </span>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</template>
+<script>
+    Vue.component('trophies-table', {
+        template: "#trophies-table-template",
+        props: {
+            trophies: Array,
+            players: {
+                type: Array,
+                default() {
+                    return [];
+                }
+            },
+            leagues: {
+                type: Array,
+                default() {
+                    return [];
+                }
+            }
+        },
+        created() {
+            this.leagueStore = new LeagueStore(this.leagues);
+            this.playerStore = new PlayerStore(this.players);
+        },
+        methods: {
+            getLeagueLabel(leagueId) {
+                let league = this.leagueStore.getWithId(leagueId);
+                if (league !== undefined) {
+                    return league.name;
+                }
+                return "?";
+            },
+            getSeasonLabel(seasonId) {
+                let season = this.leagueStore.getSeasonWithId(seasonId);
+                if (season !== undefined) {
+                    return season.name;
+                }
+                return "?";
+            },
+            getPlayerLabel(playerId) {
+                let player = this.playerStore.getWithId(playerId);
+                if (player !== undefined && !player.notFound) {
+                    return player.label;
+                }
+                return "?";
+            }
+        },
+        watch: {
+            players(value) {
+                this.playerStore = new PlayerStore(value);
+            },
+            leagues(value) {
+                this.leagueStore = new LeagueStore(value);
+            }            
+        }
+    })    
+</script>

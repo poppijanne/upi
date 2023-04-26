@@ -1,0 +1,94 @@
+<template id="login-icon-template">
+    <a class="login-icon-container" v-if="loggedIn" v-on:click.prevent="logout()">
+        {{playerName}} <i class="fas fa-sign-out-alt"></i>
+    </a>
+    <a class="login-icon-container" v-else-if="!loggedIn" v-on:click.prevent="login()">
+        <i class="fas fa-sign-in-alt"></i>
+    </a>
+</template>
+
+<style>
+    .login-icon-container {
+        display: inline-block;
+    }
+</style>
+
+<script>
+    Vue.component('login-icon', {
+        template: "#login-icon-template",
+        data() {
+            return {
+                loggedIn: false,
+                playerId: "",
+                playerName: ""
+            }
+        },
+        created() {
+
+            try {
+                fetch("/user").then(response => {
+                    console.log(response);
+                    if (response.ok) {
+                        return response.json();
+                    }
+                    else {
+                        return {
+                            error: "could not get user data",
+                            status: response.status,
+                            statusText: response.statusText
+                        }
+                    }
+                })
+                    .then(data => {
+                        if (data.error === undefined) {
+                            this.loggedIn = data.loggedIn;
+                            if (this.loggedIn) {
+                                this.playerId = data.playerId;
+                                playerService.loadPlayer(this.playerId, false).then(player => {
+                                    this.playerName = player.label;
+                                });
+                            }
+                        }
+                    }).catch(error => {
+                        console.error("Getting user info failed");
+                        console.error(error);
+                        //alert(error);
+                    });
+            }
+            catch (e) {
+                throw new UpiError(e);
+            }
+        },
+        methods: {
+            login() {
+                loginDialog.open(
+                    undefined,
+                    player => {
+                        this.playerId = player.id;
+                        this.playerName = player.label;
+                        this.loggedIn = true;
+                    }
+                );
+            },
+            logout() {
+                this.$http.post('/logout', {}).then(
+                    response => {
+                        console.log(response);
+                        if (response.body.ok) {
+                            userStore.playerIdOfUser = undefined;
+                            userStore.organizationIdOfUser = undefined;
+                            this.playerId = undefined;
+                            this.loggedIn = false;
+                        }
+                        else {
+                            alert(response.body.message);
+                        }
+                    },
+                    error => {
+                        console.error(error);
+                    }
+                );
+            }
+        }
+    })
+</script>
